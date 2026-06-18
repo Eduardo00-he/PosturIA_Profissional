@@ -1,0 +1,1823 @@
+import { useState, useEffect, useRef } from "react";
+
+// ─── Global Styles ───────────────────────────────────────────────
+const globalStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Exo+2:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cyan: #00f5ff;
+    --cyan-dim: #00c8d4;
+    --cyan-glow: rgba(0,245,255,0.15);
+    --blue-dark: #0a0e1a;
+    --blue-mid: #0d1526;
+    --blue-card: rgba(13,21,38,0.85);
+    --blue-accent: #1a3a6e;
+    --text: #e8f4f8;
+    --text-dim: #7a9ab0;
+    --glass: rgba(255,255,255,0.04);
+    --glass-border: rgba(0,245,255,0.18);
+    --font-display: 'Orbitron', monospace;
+    --font-body: 'Exo 2', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--blue-dark);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-weight: 400;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--blue-dark); }
+  ::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
+
+  /* Grid BG */
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  /* Glass card */
+  .glass {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+  }
+
+  /* Glow text */
+  .glow {
+    color: var(--cyan);
+    text-shadow: 0 0 20px rgba(0,245,255,0.6), 0 0 40px rgba(0,245,255,0.3);
+  }
+
+  /* Cyan btn */
+  .btn-cyan {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: transparent;
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-cyan::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--cyan);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .btn-cyan:hover {
+    color: var(--blue-dark);
+    box-shadow: 0 0 30px rgba(0,245,255,0.4);
+  }
+  .btn-cyan:hover::before { opacity: 1; }
+  .btn-cyan span { position: relative; z-index: 1; }
+
+  /* Outline btn */
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.25);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+  }
+  .btn-outline:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  /* Section */
+  .section { padding: 100px 0; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  /* Section label */
+  .label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .label::before {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: var(--cyan);
+  }
+
+  /* Title */
+  .title {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 20px;
+  }
+
+  /* Navbar */
+  .navbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    padding: 16px 0;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .navbar.scrolled {
+    background: rgba(10,14,26,0.95);
+    border-bottom: 1px solid var(--glass-border);
+    backdrop-filter: blur(16px);
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  .nav-logo {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 900;
+    text-decoration: none;
+    color: var(--text);
+    letter-spacing: 2px;
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    list-style: none;
+  }
+  .nav-links a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-family: var(--font-display);
+    transition: color 0.3s;
+  }
+  .nav-links a:hover { color: var(--cyan); }
+
+  /* Mobile menu */
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px;
+  }
+  .hamburger span {
+    display: block;
+    width: 24px;
+    height: 1.5px;
+    background: var(--cyan);
+    transition: all 0.3s;
+  }
+
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    .hamburger { display: flex; }
+    .nav-links.open {
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 60px; left: 0; right: 0;
+      background: rgba(10,14,26,0.98);
+      padding: 24px;
+      border-bottom: 1px solid var(--glass-border);
+      gap: 20px;
+    }
+  }
+
+  /* Hero */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding-top: 80px;
+  }
+  .hero-content { max-width: 600px; }
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 6vw, 72px);
+    font-weight: 900;
+    line-height: 1.05;
+    margin-bottom: 24px;
+  }
+  .hero-sub {
+    font-size: 18px;
+    color: var(--text-dim);
+    margin-bottom: 40px;
+    font-weight: 300;
+    max-width: 480px;
+  }
+  .hero-btns { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  /* Stat chips */
+  .stats-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 60px;
+    flex-wrap: wrap;
+  }
+  .stat-chip {
+    text-align: center;
+    padding: 16px 24px;
+  }
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+  .stat-lbl {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Floating vest visual */
+  .vest-visual {
+    position: relative;
+    width: 420px;
+    height: 480px;
+    flex-shrink: 0;
+  }
+  .vest-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(0,245,255,0.15);
+    animation: pulse-ring 3s ease-in-out infinite;
+  }
+  @keyframes pulse-ring {
+    0%,100% { opacity: 0.15; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(1.03); }
+  }
+.vest-img-wrap {
+    position: absolute;
+    inset: 5px; 
+    border-radius: 50%; 
+    overflow: hidden; 
+    border: 2px solid rgba(0, 245, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vest-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; 
+    object-position: 40% center;
+}
+  .vest-placeholder {
+    width: 220px;
+    height: 260px;
+    background: linear-gradient(145deg, rgba(0,245,255,0.08) 0%, rgba(26,58,110,0.3) 100%);
+    border-radius: 20px;
+    border: 1px solid rgba(0,245,255,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .vest-placeholder::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(transparent, rgba(0,245,255,0.05), transparent 60%);
+    animation: spin 4s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .vest-icon { font-size: 64px; position: relative; z-index: 1; }
+  .vest-label {
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Data nodes */
+  .data-node {
+    position: absolute;
+    background: rgba(0,245,255,0.08);
+    border: 1px solid var(--cyan-dim);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-family: var(--font-display);
+    color: var(--cyan);
+    white-space: nowrap;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  /* Problem cards */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 48px;
+  }
+  .problem-card {
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .problem-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 40px rgba(0,245,255,0.1);
+  }
+  .problem-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), transparent);
+  }
+  .problem-icon {
+    font-size: 36px;
+    margin-bottom: 16px;
+    display: block;
+  }
+  .problem-title {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+  .problem-text { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+  /* How it works */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-top: 48px;
+    position: relative;
+  }
+  .step-card {
+    padding: 32px 24px;
+    text-align: center;
+    position: relative;
+  }
+  .step-num {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 1px solid var(--cyan);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--cyan);
+    margin: 0 auto 20px;
+  }
+  .step-title {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .step-text { font-size: 13px; color: var(--text-dim); }
+
+  /* Tech stack */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+    margin-top: 48px;
+  }
+  .tech-chip {
+    padding: 20px 16px;
+    text-align: center;
+    border-radius: 12px;
+    background: rgba(0,245,255,0.04);
+    border: 1px solid rgba(0,245,255,0.12);
+    transition: all 0.3s;
+    cursor: default;
+  }
+  .tech-chip:hover {
+    background: rgba(0,245,255,0.08);
+    border-color: var(--cyan);
+    transform: scale(1.04);
+  }
+  .tech-chip-icon { font-size: 28px; margin-bottom: 8px; }
+  .tech-chip-name {
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+
+  /* Testimonials */
+  .testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 24px;
+    margin-top: 48px;
+  }
+  .testimonial-card {
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .testimonial-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), transparent);
+  }
+  .testimonial-text {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    line-height: 1.7;
+  }
+  .testimonial-author {
+    font-family: var(--font-display);
+    font-size: 12px;
+    color: var(--cyan);
+    letter-spacing: 1px;
+  }
+
+  /* Dashboard layout */
+  .dash-layout {
+    display: flex;
+    height: 100vh;
+    background: var(--blue-dark);
+  }
+  .sidebar {
+    width: 240px;
+    background: rgba(13,21,38,0.5);
+    border-right: 1px solid var(--glass-border);
+    padding: 24px 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .sidebar-logo {
+    padding: 0 24px 32px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sidebar-nav {
+    list-style: none;
+    padding: 0 12px;
+  }
+  .sidebar-nav li {
+    margin-bottom: 8px;
+  }
+  .sidebar-nav button {
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-family: var(--font-display);
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .sidebar-nav button:hover {
+    background: rgba(0,245,255,0.08);
+    color: var(--cyan);
+  }
+  .sidebar-nav li.active button {
+    background: rgba(0,245,255,0.12);
+    color: var(--cyan);
+    border-left: 2px solid var(--cyan);
+    padding-left: 14px;
+  }
+  .dash-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .dash-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(13,21,38,0.3);
+  }
+  .dash-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  }
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .metric-card {
+    background: rgba(0,245,255,0.04);
+    border: 1px solid rgba(0,245,255,0.12);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .metric-val {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .metric-lbl {
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .patient-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .patient-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: rgba(0,245,255,0.04);
+    border: 1px solid rgba(0,245,255,0.12);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .patient-row:hover {
+    background: rgba(0,245,255,0.08);
+    border-color: var(--cyan);
+  }
+  .patient-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .status-online {
+    background: #00ff88;
+    box-shadow: 0 0 6px #00ff88;
+  }
+  .status-offline {
+    background: #ff6677;
+    box-shadow: 0 0 6px #ff6677;
+  }
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--cyan), var(--blue-accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--blue-dark);
+  }
+  .graph-wrap {
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .graph-title {
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+  .angle-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .angle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .angle-name {
+    font-family: var(--font-display);
+    font-size: 12px;
+    color: var(--text-dim);
+    width: 80px;
+  }
+  .angle-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(0,245,255,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .angle-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  .angle-val {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    width: 40px;
+    text-align: right;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+  .modal-box {
+    background: var(--blue-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    backdrop-filter: blur(12px);
+  }
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    color: var(--text-dim);
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-close:hover {
+    background: rgba(0,245,255,0.08);
+    color: var(--cyan);
+    border-color: var(--cyan);
+  }
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .modal-sub {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+  }
+  .form-group {
+    margin-bottom: 16px;
+  }
+  .form-label {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .form-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(0,245,255,0.04);
+    border: 1px solid rgba(0,245,255,0.12);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    transition: all 0.3s;
+  }
+  .form-input:focus {
+    outline: none;
+    background: rgba(0,245,255,0.08);
+    border-color: var(--cyan);
+    box-shadow: 0 0 12px rgba(0,245,255,0.2);
+  }
+  .form-input::placeholder {
+    color: var(--text-dim);
+  }
+
+  /* Login */
+  .login-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .login-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 40px;
+  }
+  .role-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .role-card {
+    padding: 32px 24px;
+    background: rgba(0,245,255,0.04);
+    border: 1px solid rgba(0,245,255,0.12);
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .role-card:hover {
+    background: rgba(0,245,255,0.08);
+    border-color: var(--cyan);
+    transform: translateY(-4px);
+  }
+  .role-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  .role-name {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Footer */
+  footer {
+    background: rgba(13,21,38,0.5);
+    border-top: 1px solid var(--glass-border);
+    padding: 60px 0 20px;
+  }
+  .footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 40px;
+    margin-bottom: 40px;
+  }
+  .footer-title {
+    font-family: var(--font-display);
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .footer-links {
+    list-style: none;
+  }
+  .footer-links li {
+    margin-bottom: 8px;
+  }
+  .footer-links a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.3s;
+  }
+  .footer-links a:hover {
+    color: var(--cyan);
+  }
+  .footer-copy {
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid var(--glass-border);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .footer-copy p {
+    margin: 4px 0;
+  }
+
+  /* Contact */
+  .contact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 48px;
+  }
+  .contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .contact-item {
+    display: flex;
+    gap: 16px;
+  }
+  .contact-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+  }
+  .contact-label {
+    font-family: var(--font-display);
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .contact-val {
+    font-size: 14px;
+    color: var(--text);
+    margin-top: 4px;
+  }
+
+  /* FAQ */
+  .faq-item {
+    margin-bottom: 16px;
+  }
+  .faq-q {
+    width: 100%;
+    padding: 16px;
+    background: rgba(0,245,255,0.04);
+    border: 1px solid rgba(0,245,255,0.12);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.3s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .faq-q:hover {
+    background: rgba(0,245,255,0.08);
+    border-color: var(--cyan);
+  }
+  .faq-a {
+    padding: 16px;
+    background: rgba(0,245,255,0.02);
+    border-left: 2px solid var(--cyan);
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+
+  /* Plans */
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-top: 48px;
+  }
+  .plan-card {
+    padding: 32px;
+    background: rgba(0,245,255,0.04);
+    border: 1px solid rgba(0,245,255,0.12);
+    border-radius: 12px;
+    position: relative;
+  }
+  .plan-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), transparent);
+  }
+  .plan-name {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .plan-price {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--cyan);
+    margin-bottom: 4px;
+  }
+  .plan-period {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+  }
+  .plan-features {
+    list-style: none;
+    margin-bottom: 24px;
+  }
+  .plan-features li {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    padding-left: 20px;
+    position: relative;
+  }
+  .plan-features li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--cyan);
+    font-weight: 700;
+  }
+
+  @media (max-width: 768px) {
+    .dash-layout {
+      flex-direction: column;
+    }
+    .sidebar {
+      width: 100%;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--glass-border);
+      flex-direction: row;
+      overflow-x: auto;
+    }
+    .sidebar-nav {
+      display: flex;
+      gap: 8px;
+      padding: 0 12px;
+    }
+    .contact-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+`;
+
+// ─── MINI CHART ────────────────────────────────────────────────
+function MiniChart({ data }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.fillRect(0, 0, w, h);
+    const max = Math.max(...data, 100);
+    const step = w / (data.length - 1);
+    ctx.strokeStyle = '#00f5ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = i * step;
+      const y = h - (v / max) * h * 0.8 - 10;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(0,245,255,0.1)';
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    ctx.fill();
+  }, [data]);
+  return <canvas ref={canvasRef} width={400} height={120} style={{ width: '100%', height: 'auto' }} />;
+}
+
+// ─── LOGO ───────────────────────────────────────────────────────
+function Logo({ size = 24 }) {
+  return (
+    <div style={{ fontFamily: "var(--font-display)", fontSize: size, fontWeight: 900, letterSpacing: 2, background: "linear-gradient(135deg, #00f5ff, #1a3a6e)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+      PosturIA
+    </div>
+  );
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────
+export default function App() {
+  const [page, setPage] = useState("home");
+  const [role, setRole] = useState(null);
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = globalStyles;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
+
+  const handleLogout = () => {
+    setLoggedIn(false);
+    setRole(null);
+    setPage("home");
+  };
+
+  if (loggedIn && role === "medico") {
+    return <DoctorDash onLogout={handleLogout} />;
+  }
+  if (loggedIn && role === "clinica") {
+    return <ClinicDash onLogout={handleLogout} />;
+  }
+  if (!loggedIn) {
+    return <LoginPage onLogin={(r) => { setRole(r); setLoggedIn(true); }} />;
+  }
+
+  return <HomePage />;
+}
+
+// ─── LOGIN PAGE ───────────────────────────────────────────────────
+function LoginPage({ onLogin }) {
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
+  const [err, setErr] = useState("");
+  const [step, setStep] = useState("login"); // login | role | medico-select
+  const [medicos, setMedicos] = useState([]);
+  const [selectedMedico, setSelectedMedico] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login: user, senha: pass }),
+      });
+      if (res.ok) {
+        setStep("role");
+        setErr("");
+      } else {
+        setErr("Credenciais inválidas. Tente: eduardo0 / posturia0");
+      }
+    } catch {
+      setErr("Erro de conexão com o servidor.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRoleSelect = async (role) => {
+    if (role === "medico") {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/medicos");
+        if (res.ok) {
+          const data = await res.json();
+          setMedicos(data);
+          setStep("medico-select");
+        } else {
+          setErr("Erro ao carregar médicos.");
+        }
+      } catch {
+        setErr("Erro de conexão ao buscar médicos.");
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      onLogin(role);
+    }
+  };
+
+  const handleMedicoSelect = () => {
+    if (selectedMedico) {
+      sessionStorage.setItem("medico_id", selectedMedico);
+      onLogin("medico");
+    }
+  };
+
+  if (step === "medico-select") {
+    return (
+      <div className="login-wrap grid-bg">
+        <div style={{ textAlign: "center" }}>
+          <Logo size={28} />
+          <h2 style={{ fontFamily: "var(--font-display)", marginTop: 32, marginBottom: 8, color: "var(--text)" }}>
+            Selecione seu Perfil
+          </h2>
+          <p style={{ color: "var(--text-dim)", marginBottom: 40 }}>Qual médico você é?</p>
+          <div style={{ maxWidth: 500, margin: "0 auto" }}>
+            {medicos.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {medicos.map(med => (
+                  <div
+                    key={med.id}
+                    onClick={() => setSelectedMedico(med.id)}
+                    style={{
+                      padding: 16,
+                      background: selectedMedico === med.id ? "rgba(0,245,255,0.12)" : "rgba(0,245,255,0.04)",
+                      border: `1px solid ${selectedMedico === med.id ? "var(--cyan)" : "rgba(0,245,255,0.12)"}`,
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      transition: "all 0.3s",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>
+                      {med.nome}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}>
+                      {med.area} • {med.crm}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: "var(--text-dim)" }}>Nenhum médico cadastrado.</p>
+            )}
+            <button
+              className="btn-cyan"
+              style={{ width: "100%", marginTop: 24, justifyContent: "center" }}
+              onClick={handleMedicoSelect}
+              disabled={!selectedMedico}
+            >
+              <span>Continuar</span>
+            </button>
+            <button
+              className="btn-outline"
+              style={{ width: "100%", marginTop: 12, justifyContent: "center" }}
+              onClick={() => setStep("role")}
+            >
+              <span>Voltar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "role") {
+    return (
+      <div className="login-wrap grid-bg">
+        <div style={{ textAlign: "center" }}>
+          <Logo size={28} />
+          <h2 style={{ fontFamily: "var(--font-display)", marginTop: 32, marginBottom: 8, color: "var(--text)" }}>
+            Bem-vindo, Eduardo
+          </h2>
+          <p style={{ color: "var(--text-dim)", marginBottom: 40 }}>Como deseja acessar o sistema?</p>
+          <div className="role-grid" style={{ maxWidth: 400, margin: "0 auto" }}>
+            <div className="role-card" onClick={() => handleRoleSelect("medico")}>
+              <div className="role-icon">👨‍⚕️</div>
+              <div className="role-name">Médico</div>
+            </div>
+            <div className="role-card" onClick={() => handleRoleSelect("clinica")}>
+              <div className="role-icon">🏥</div>
+              <div className="role-name">Clínica</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="login-wrap grid-bg">
+      <div className="glass login-card">
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <Logo size={26} />
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text-dim)", marginTop: 12, letterSpacing: 2, fontWeight: 400 }}>
+            ÁREA PROFISSIONAL
+          </h2>
+        </div>
+        {err && (
+          <div style={{ background: "rgba(255,68,85,0.08)", border: "1px solid rgba(255,68,85,0.3)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#ff6677" }}>
+            {err}
+          </div>
+        )}
+        <div className="form-group">
+          <label className="form-label">Login</label>
+          <input className="form-input" value={user} onChange={e => { setUser(e.target.value); setErr(""); }} placeholder="Digite seu login" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Senha</label>
+          <input className="form-input" type="password" value={pass} onChange={e => { setPass(e.target.value); setErr(""); }} placeholder="••••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+        </div>
+        <button className="btn-cyan" style={{ width: "100%", marginTop: 8, justifyContent: "center" }} onClick={handleLogin} disabled={loading}>
+          <span>{loading ? "Carregando..." : "Acessar Sistema"}</span>
+        </button>
+        <p style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: "var(--text-dim)" }}>
+          Credencial: eduardo0 / posturia0
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── DOCTOR DASHBOARD ─────────────────────────────────────────────
+function DoctorDash({ onLogout }) {
+  const [selected, setSelected] = useState(null);
+  const [activeNav, setActiveNav] = useState("pacientes");
+  const [chartData, setChartData] = useState([30, 45, 35, 60, 40, 55, 38]);
+  const [modalPaciente, setModalPaciente] = useState(false);
+  const [formPaciente, setFormPaciente] = useState({ nome: "", idade: "", patologia: "" });
+  const [pacientes, setPacientes] = useState([]);
+  const [msgPaciente, setMsgPaciente] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [medicoInfo, setMedicoInfo] = useState(null);
+
+  const medicoId = parseInt(sessionStorage.getItem("medico_id") || "1");
+
+  useEffect(() => {
+    // Buscar informações do médico
+    const fetchMedicoInfo = async () => {
+      try {
+        const res = await fetch(`/api/medicos/${medicoId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setMedicoInfo(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar médico:", err);
+      }
+    };
+
+    // Buscar pacientes do médico
+    const fetchPacientes = async () => {
+      try {
+        const res = await fetch(`/api/pacientes?medico_id=${medicoId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPacientes(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar pacientes:", err);
+      }
+    };
+
+    fetchMedicoInfo();
+    fetchPacientes();
+  }, [medicoId]);
+
+  const salvarPaciente = async () => {
+    if (!formPaciente.nome || !formPaciente.idade || !formPaciente.patologia) {
+      setMsgPaciente("Erro: Preencha todos os campos.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/pacientes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: formPaciente.nome,
+          idade: parseInt(formPaciente.idade),
+          patologia: formPaciente.patologia,
+          medico_id: medicoId,
+        }),
+      });
+      if (res.ok) {
+        const newPaciente = await res.json();
+        setPacientes([...pacientes, newPaciente]);
+        setMsgPaciente("Paciente cadastrado com sucesso!");
+        setFormPaciente({ nome: "", idade: "", patologia: "" });
+        setTimeout(() => { setModalPaciente(false); setMsgPaciente(""); }, 1500);
+      } else {
+        const err = await res.json();
+        setMsgPaciente("Erro: " + (err.message || JSON.stringify(err.errors)));
+      }
+    } catch {
+      setMsgPaciente("Erro de conexão.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setChartData(prev => [...prev.slice(1), Math.floor(20 + Math.random() * 60)]);
+    }, 1800);
+    return () => clearInterval(iv);
+  }, []);
+
+  const p = selected !== null ? pacientes[selected] : null;
+
+  return (
+    <div className="dash-layout">
+      <aside className="sidebar">
+        <div className="sidebar-logo"><Logo size={18} /></div>
+        <ul className="sidebar-nav">
+          {[
+            { id: "pacientes", label: "Pacientes", icon: "👥" },
+            { id: "relatorios", label: "Relatórios", icon: "📊" },
+            { id: "agenda", label: "Agenda", icon: "📅" },
+            { id: "alertas", label: "Alertas", icon: "🔔" },
+          ].map(n => (
+            <li key={n.id} className={activeNav === n.id ? "active" : ""}>
+              <button onClick={() => { setActiveNav(n.id); setSelected(null); }}>
+                <span>{n.icon}</span> {n.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <ul className="sidebar-nav" style={{ paddingTop: 16, borderTop: "1px solid var(--glass-border)" }}>
+          <li>
+            <button onClick={onLogout}><span>🚪</span> Sair</button>
+          </li>
+        </ul>
+      </aside>
+
+      <main className="dash-main">
+        <div className="dash-header">
+          <div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700 }}>
+              {p ? p.nome : "Painel Médico"}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+              {medicoInfo ? `Dr(a). ${medicoInfo.nome} — ${medicoInfo.area}` : "Carregando..."}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ fontSize: 12, color: "var(--text-dim)", fontFamily: "var(--font-display)", letterSpacing: 1 }}>
+              {new Date().toLocaleTimeString("pt-BR")}
+            </div>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#00ff88", boxShadow: "0 0 6px #00ff88" }} />
+          </div>
+        </div>
+
+        <div className="dash-content">
+          {!p ? (
+            <>
+              <div className="metrics-row">
+                <div className="metric-card">
+                  <div className="metric-val" style={{ color: "var(--cyan)" }}>{pacientes.length}</div>
+                  <div className="metric-lbl">Pacientes</div>
+                </div>
+                <div className="metric-card">
+                  <div className="metric-val" style={{ color: "#00ff88" }}>{pacientes.filter(pt => pt.status_conexao === 1).length}</div>
+                  <div className="metric-lbl">Coletes online</div>
+                </div>
+                <div className="metric-card">
+                  <div className="metric-val" style={{ color: "#ffaa00" }}>12</div>
+                  <div className="metric-lbl">Alertas hoje</div>
+                </div>
+                <div className="metric-card">
+                  <div className="metric-val" style={{ color: "var(--cyan)" }}>
+                    {pacientes.length > 0 ? (pacientes.reduce((sum, pt) => sum + (pt.postura_media_percentual || 0), 0) / pacientes.length).toFixed(1) : 0}%
+                  </div>
+                  <div className="metric-lbl">Postura correta (média)</div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: 2, color: "var(--text-dim)", textTransform: "uppercase" }}>
+                  Lista de Pacientes
+                </div>
+                <button className="btn-cyan" style={{ padding: "8px 16px", fontSize: "10px" }} onClick={() => setModalPaciente(true)}>
+                  <span>+ Adicionar Paciente</span>
+                </button>
+              </div>
+
+              <div className="patient-list">
+                {pacientes.length > 0 ? (
+                  pacientes.map((pt, i) => (
+                    <div key={i} className="patient-row" onClick={() => setSelected(i)}>
+                      <div className="patient-info">
+                        <div className={`status-dot ${pt.status_conexao === 1 ? "status-online" : "status-offline"}`} />
+                        <div className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
+                          {pt.nome.split(" ").map(w => w[0]).join("")}
+                        </div>
+                        <div>
+                          <div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{pt.nome}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{pt.patologia}</div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 12, color: pt.status_conexao === 1 ? "#00ff88" : "var(--text-dim)" }}>
+                          {pt.status_conexao === 1 ? "● Online" : "Offline"}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                          Postura: {pt.postura_media_percentual}%
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-dim)" }}>
+                    Nenhum paciente cadastrado. Clique em "+ Adicionar Paciente" para começar.
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <button className="btn-outline" style={{ marginBottom: 24, padding: "8px 16px", fontSize: "10px" }} onClick={() => setSelected(null)}>
+                ← Voltar
+              </button>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+                <div className="metric-card">
+                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Paciente</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>{p.nome}</div>
+                </div>
+                <div className="metric-card">
+                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Diagnóstico</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 12, color: "var(--cyan)" }}>{p.patologia}</div>
+                </div>
+                <div className="metric-card">
+                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Status do Colete</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: p.status_conexao === 1 ? "#00ff88" : "#ff6677" }}>
+                    {p.status_conexao === 1 ? "● Online" : "Offline"}
+                  </div>
+                </div>
+                <div className="metric-card">
+                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Postura Média</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>
+                    {p.postura_media_percentual}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="glass graph-wrap" style={{ marginBottom: 20 }}>
+                <div className="graph-title">HISTÓRICO DE VARIAÇÃO POSTURAL — ÚLTIMA HORA</div>
+                <MiniChart data={chartData} />
+              </div>
+            </>
+          )}
+        </div>
+      </main>
+
+      {modalPaciente && (
+        <div className="modal-overlay" onClick={() => setModalPaciente(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setModalPaciente(false)}>✕</button>
+            <div className="modal-title">Adicionar Paciente</div>
+            <div className="modal-sub">Preencha os dados do novo paciente</div>
+
+            {[
+              { key: "nome", label: "Nome Completo" },
+              { key: "idade", label: "Idade" },
+              { key: "patologia", label: "Patologia" },
+            ].map(f => (
+              <div key={f.key} className="form-group" style={{ marginBottom: 16 }}>
+                <label className="form-label">{f.label}</label>
+                <input
+                  className="form-input"
+                  placeholder={f.label}
+                  type={f.key === "idade" ? "number" : "text"}
+                  value={formPaciente[f.key]}
+                  onChange={e => setFormPaciente(prev => ({ ...prev, [f.key]: e.target.value }))}
+                />
+              </div>
+            ))}
+
+            {msgPaciente && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  fontSize: 13,
+                  background: msgPaciente.startsWith("Erro") ? "rgba(255,68,85,0.1)" : "rgba(0,255,136,0.1)",
+                  border: `1px solid ${msgPaciente.startsWith("Erro") ? "rgba(255,68,85,0.3)" : "rgba(0,255,136,0.3)"}`,
+                  color: msgPaciente.startsWith("Erro") ? "#ff6677" : "#00ff88",
+                }}
+              >
+                {msgPaciente}
+              </div>
+            )}
+            <button className="btn-cyan" style={{ width: "100%", justifyContent: "center" }} onClick={salvarPaciente} disabled={loading}>
+              <span>{loading ? "Salvando..." : "Salvar Paciente"}</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CLINIC DASHBOARD ─────────────────────────────────────────────
+function ClinicDash({ onLogout }) {
+  const [selDoc, setSelDoc] = useState(null);
+  const [medicos, setMedicos] = useState([]);
+  const [modalMedico, setModalMedico] = useState(false);
+  const [formMedico, setFormMedico] = useState({ nome: "", idade: "", area: "" });
+  const [msgMedico, setMsgMedico] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchMedicos = async () => {
+      try {
+        const res = await fetch("/api/medicos");
+        if (res.ok) {
+          const data = await res.json();
+          setMedicos(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar médicos:", err);
+      }
+    };
+    fetchMedicos();
+  }, []);
+
+  const salvarMedico = async () => {
+    if (!formMedico.nome || !formMedico.idade || !formMedico.area) {
+      setMsgMedico("Erro: Preencha todos os campos.");
+      return;
+    }
+
+    const area = formMedico.area.toLowerCase().trim();
+    if (area !== "fisioterapeuta" && area !== "ortopedista") {
+      setMsgMedico("Erro: Inválido. Aceite apenas 'fisioterapeuta' ou 'ortopedista'.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/medicos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: formMedico.nome,
+          idade: parseInt(formMedico.idade),
+          area: area,
+        }),
+      });
+      if (res.ok) {
+        const newMedico = await res.json();
+        setMedicos([...medicos, newMedico]);
+        setMsgMedico("Médico cadastrado com sucesso!");
+        setFormMedico({ nome: "", idade: "", area: "" });
+        setTimeout(() => { setModalMedico(false); setMsgMedico(""); }, 1500);
+      } else {
+        const err = await res.json();
+        setMsgMedico("Erro: " + (err.message || JSON.stringify(err.errors)));
+      }
+    } catch {
+      setMsgMedico("Erro de conexão.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const d = selDoc !== null ? medicos[selDoc] : null;
+
+  return (
+    <div className="dash-layout">
+      <aside className="sidebar">
+        <div className="sidebar-logo"><Logo size={18} /></div>
+        <ul className="sidebar-nav">
+          {[
+            { label: "Visão Geral", icon: "🏥" },
+            { label: "Médicos", icon: "👨‍⚕️" },
+            { label: "Pacientes", icon: "👥" },
+            { label: "Métricas", icon: "📊" },
+          ].map(n => (
+            <li key={n.label}>
+              <button><span>{n.icon}</span> {n.label}</button>
+            </li>
+          ))}
+        </ul>
+        <ul className="sidebar-nav" style={{ paddingTop: 16, borderTop: "1px solid var(--glass-border)" }}>
+          <li><button onClick={onLogout}><span>🚪</span> Sair</button></li>
+        </ul>
+      </aside>
+
+      <main className="dash-main">
+        <div className="dash-header">
+          <div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700 }}>
+              {d ? d.nome : "Painel da Clínica"}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-dim)" }}>Centro de Reabilitação PosturIA</div>
+          </div>
+        </div>
+
+        <div className="dash-content">
+          {!d ? (
+            <>
+              <div className="metrics-row">
+                <div className="metric-card">
+                  <div className="metric-val" style={{ color: "var(--cyan)" }}>{medicos.length}</div>
+                  <div className="metric-lbl">Médicos ativos</div>
+                </div>
+                <div className="metric-card">
+                  <div className="metric-val" style={{ color: "#00ff88" }}>
+                    {medicos.reduce((sum, m) => sum + (m.pacientes ? m.pacientes.length : 0), 0)}
+                  </div>
+                  <div className="metric-lbl">Pacientes totais</div>
+                </div>
+                <div className="metric-card">
+                  <div className="metric-val" style={{ color: "#00ff88" }}>
+                    {medicos.reduce((sum, m) => sum + (m.pacientes ? m.pacientes.filter(p => p.status_conexao === 1).length : 0), 0)}
+                  </div>
+                  <div className="metric-lbl">Coletes online</div>
+                </div>
+                <div className="metric-card">
+                  <div className="metric-val" style={{ color: "var(--cyan)" }}>82%</div>
+                  <div className="metric-lbl">Aderência média</div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: 2, color: "var(--text-dim)", textTransform: "uppercase" }}>
+                  Médicos da Clínica
+                </div>
+                <button className="btn-cyan" style={{ padding: "8px 16px", fontSize: "10px" }} onClick={() => setModalMedico(true)}>
+                  <span>+ Adicionar Médico</span>
+                </button>
+              </div>
+
+              <div className="patient-list">
+                {medicos.length > 0 ? (
+                  medicos.map((doc, i) => (
+                    <div key={i} className="patient-row" onClick={() => setSelDoc(i)}>
+                      <div className="patient-info">
+                        <div className="avatar">{doc.nome.split(" ").slice(0, 2).map(w => w[0]).join("")}</div>
+                        <div>
+                          <div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{doc.nome}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{doc.area} — {doc.crm}</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+                        {doc.pacientes ? doc.pacientes.length : 0} paciente{doc.pacientes && doc.pacientes.length !== 1 ? "s" : ""}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-dim)" }}>
+                    Nenhum médico cadastrado. Clique em "+ Adicionar Médico" para começar.
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <button className="btn-outline" style={{ marginBottom: 24, padding: "8px 16px", fontSize: "10px" }} onClick={() => setSelDoc(null)}>
+                ← Voltar
+              </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+                <div className="metric-card">
+                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Especialidade</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--cyan)" }}>{d.area}</div>
+                </div>
+                <div className="metric-card">
+                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Registro</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>{d.crm}</div>
+                </div>
+              </div>
+
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: 2, color: "var(--text-dim)", marginBottom: 16, textTransform: "uppercase" }}>
+                Pacientes Vinculados
+              </div>
+              <div className="patient-list">
+                {d.pacientes && d.pacientes.length > 0 ? (
+                  d.pacientes.map((pt, pi) => (
+                    <div key={pi} className="patient-row" style={{ cursor: "default" }}>
+                      <div className="patient-info">
+                        <div className={`status-dot ${pt.status_conexao === 1 ? "status-online" : "status-offline"}`} />
+                        <div className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
+                          {pt.nome.split(" ").map(w => w[0]).join("")}
+                        </div>
+                        <div>
+                          <div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{pt.nome}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{pt.patologia}</div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 12, color: pt.status_conexao === 1 ? "#00ff88" : "var(--text-dim)" }}>
+                          {pt.status_conexao === 1 ? "● Online" : "Offline"}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                          Postura: {pt.postura_media_percentual}%
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-dim)" }}>
+                    Este médico não possui pacientes cadastrados.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </main>
+
+      {modalMedico && (
+        <div className="modal-overlay" onClick={() => setModalMedico(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setModalMedico(false)}>✕</button>
+            <div className="modal-title">Adicionar Médico</div>
+            <div className="modal-sub">Preencha os dados do novo médico</div>
+
+            {[
+              { key: "nome", label: "Nome Completo" },
+              { key: "idade", label: "Idade" },
+              { key: "area", label: "Área (fisioterapeuta ou ortopedista)" },
+            ].map(f => (
+              <div key={f.key} className="form-group" style={{ marginBottom: 16 }}>
+                <label className="form-label">{f.label}</label>
+                <input
+                  className="form-input"
+                  placeholder={f.label}
+                  type={f.key === "idade" ? "number" : "text"}
+                  value={formMedico[f.key]}
+                  onChange={e => setFormMedico(prev => ({ ...prev, [f.key]: e.target.value }))}
+                />
+              </div>
+            ))}
+
+            {msgMedico && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  fontSize: 13,
+                  background: msgMedico.startsWith("Erro") ? "rgba(255,68,85,0.1)" : "rgba(0,255,136,0.1)",
+                  border: `1px solid ${msgMedico.startsWith("Erro") ? "rgba(255,68,85,0.3)" : "rgba(0,255,136,0.3)"}`,
+                  color: msgMedico.startsWith("Erro") ? "#ff6677" : "#00ff88",
+                }}
+              >
+                {msgMedico}
+              </div>
+            )}
+            <button className="btn-cyan" style={{ width: "100%", justifyContent: "center" }} onClick={salvarMedico} disabled={loading}>
+              <span>{loading ? "Salvando..." : "Salvar Médico"}</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
