@@ -20,23 +20,25 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-         $medicosBase = [
-            ['id' => 1, 'nome' => 'Dr. Henrique Silva', 'idade' => 41, 'area' => 'ortopedista',    'crm' => 'CRM-ORTO-58432'],
-            ['id' => 2, 'nome' => 'Dra. Mariana Costa',  'idade' => 35, 'area' => 'fisioterapeuta', 'crm' => 'CRM-FISIO-71204'],
-            ['id' => 3, 'nome' => 'Dr. Rafael Souza',    'idade' => 39, 'area' => 'ortopedista',    'crm' => 'CRM-ORTO-39876'],
+        // ALTERADO: Trocado 'idade' por 'data_nascimento' com datas fictícias correspondentes
+        $medicosBase = [
+            ['id' => 1, 'nome' => 'Dr. Henrique Silva', 'data_nascimento' => '1985-05-15', 'area' => 'ortopedista',    'crm' => 'CRM-ORTO-58432'],
+            ['id' => 2, 'nome' => 'Dra. Mariana Costa',  'data_nascimento' => '1991-08-22', 'area' => 'fisioterapeuta', 'crm' => 'CRM-FISIO-71204'],
+            ['id' => 3, 'nome' => 'Dr. Rafael Souza',    'data_nascimento' => '1987-11-03', 'area' => 'ortopedista',    'crm' => 'CRM-ORTO-39876'],
         ];
- 
+
         foreach ($medicosBase as $dados) {
             Medicos::firstOrCreate(
                 ['id' => $dados['id']],
                 [
                     'nome' => $dados['nome'],
-                    'idade' => $dados['idade'],
+                    'data_nascimento' => $dados['data_nascimento'], // ALTERADO AQUI TAMBÉM
                     'area' => $dados['area'],
                     'crm' => $dados['crm'],
                     'clinica_id' => $clinica->id,
                 ]
             );
+        } // fecha o foreach
 
         // 3. Para os pacientes, como eles não têm ID fixo no código, vamos limpar a tabela antes de reinserir
         // Assim evita acumular nomes repetidos toda vez que rodar o comando

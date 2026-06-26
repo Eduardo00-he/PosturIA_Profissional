@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -13,6 +14,12 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+Route::get('/admin', function (Request $request) {
+    return Inertia::render('Admin', [
+        'role' => $request->query('role'),
+    ]);
+})->name('admin');
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');

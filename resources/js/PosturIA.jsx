@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { router } from "@inertiajs/react";
 
 // ─── Global Styles ───────────────────────────────────────────────
 const globalStyles = `
@@ -1324,7 +1325,7 @@ function HomePage({ setPage }) {
 }
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────
-function LoginPage({ onLogin }) {
+function LoginPage() {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
@@ -1334,8 +1335,12 @@ function LoginPage({ onLogin }) {
     if (user === "Eduardo0" && pass === "Posturia0.") {
       setStep("role");
     } else {
-      setErr("Credenciais inválidas. Tente: Eduardo0 / Posturia0.");
+      setErr("Credenciais inválidas.");
     }
+  };
+
+  const goToAdmin = (role) => {
+    router.visit("/admin", { data: { role } });
   };
 
   if (step === "role") {
@@ -1348,11 +1353,11 @@ function LoginPage({ onLogin }) {
           </h2>
           <p style={{ color: "var(--text-dim)", marginBottom: 40 }}>Como deseja acessar o sistema?</p>
           <div className="role-grid" style={{ maxWidth: 400, margin: "0 auto" }}>
-            <div className="role-card" onClick={() => onLogin("medico")}>
+            <div className="role-card" onClick={() => goToAdmin("medico")}>
               <div className="role-icon">👨‍⚕️</div>
               <div className="role-name">Médico</div>
             </div>
-            <div className="role-card" onClick={() => onLogin("clinica")}>
+            <div className="role-card" onClick={() => goToAdmin("clinica")}>
               <div className="role-icon">🏥</div>
               <div className="role-name">Clínica</div>
             </div>
@@ -1387,402 +1392,7 @@ function LoginPage({ onLogin }) {
         <button className="btn-cyan" style={{ width: "100%", marginTop: 8, justifyContent: "center" }} onClick={handleLogin}>
           <span>Acessar Sistema</span>
         </button>
-        <p style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: "var(--text-dim)" }}>
-          Credencial: Eduardo0 / Posturia0.
-        </p>
       </div>
-    </div>
-  );
-}
-
-// ─── DOCTOR DASHBOARD ─────────────────────────────────────────────
-const PATIENTS = [
-  { name: "Lucas Almeida", age: 34, condition: "Lombalgia Crônica", online: true, vestOn: "08:15", vestOff: null, cervical: 18, dorsal: 32, lombar: 62 },
-  { name: "Pedro Martins", age: 28, condition: "Escoliose Leve", online: true, vestOn: "09:02", vestOff: null, cervical: 24, dorsal: 45, lombar: 38 },
-  { name: "Rafael Costa", age: 45, condition: "Hérnia de Disco L4-L5", online: false, vestOn: "07:30", vestOff: "11:20", cervical: 12, dorsal: 28, lombar: 75 },
-  { name: "Ana Souza", age: 22, condition: "Hipercifose Postural", online: true, vestOn: "10:15", vestOff: null, cervical: 35, dorsal: 58, lombar: 22 },
-  { name: "Júlia Lima", age: 31, condition: "Cervicalgia Tensional", online: false, vestOn: "06:45", vestOff: "09:30", cervical: 42, dorsal: 20, lombar: 18 },
-];
-
-function DoctorDash({ onLogout }) {
-  const [selected, setSelected] = useState(null);
-  const [activeNav, setActiveNav] = useState("pacientes");
-  const [chartData, setChartData] = useState([30, 45, 35, 60, 40, 55, 38]);
-  const [modalPaciente, setModalPaciente] = useState(false);
-  // Trocado de email para patologia aqui:
-  const [formPaciente, setFormPaciente] = useState({ nome: "", patologia: "", medico_id: null });
-  const [pacientes, setPacientes] = useState(PATIENTS);
-  const [msgPaciente, setMsgPaciente] = useState("");
-
-  const salvarPaciente = async () => {
-    try {
-      const res = await fetch("/api/pacientes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content || "" },
-        body: JSON.stringify(formPaciente),
-      });
-      if (res.ok) {
-        setMsgPaciente("Paciente cadastrado com sucesso!");
-        setFormPaciente({ nome: "", patologia: "", medico_id: 1 }); // Limpa o formulário corrigido
-        setTimeout(() => { setModalPaciente(false); setMsgPaciente(""); }, 1500);
-      } else {
-        const err = await res.json();
-        setMsgPaciente("Erro: " + (err.message || JSON.stringify(err.errors)));
-      }
-    } catch {
-      setMsgPaciente("Erro de conexão.");
-    }
-  };
-
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setChartData(prev => [...prev.slice(1), Math.floor(20 + Math.random() * 60)]);
-    }, 1800);
-    return () => clearInterval(iv);
-  }, []);
-
-  const p = selected !== null ? PATIENTS[selected] : null;
-
-  return (
-    <div className="dash-layout">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-logo"><Logo size={18} /></div>
-        <ul className="sidebar-nav">
-          {[
-            { id: "pacientes", label: "Pacientes", icon: "👥" },
-            { id: "relatorios", label: "Relatórios", icon: "📊" },
-            { id: "agenda", label: "Agenda", icon: "📅" },
-            { id: "alertas", label: "Alertas", icon: "🔔" },
-          ].map(n => (
-            <li key={n.id} className={activeNav === n.id ? "active" : ""}>
-              <button onClick={() => { setActiveNav(n.id); setSelected(null); }}>
-                <span>{n.icon}</span> {n.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <ul className="sidebar-nav" style={{ paddingTop: 16, borderTop: "1px solid var(--glass-border)" }}>
-          <li>
-            <button onClick={onLogout}><span>🚪</span> Sair</button>
-          </li>
-        </ul>
-      </aside>
-
-      {/* Main */}
-      <main className="dash-main">
-        <div className="dash-header">
-          <div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700 }}>
-              {p ? p.name : "Painel Médico"}
-            </div>
-            <div style={{ fontSize: 12, color: "var(--text-dim)" }}>Dr. Henrique Silva — Ortopedista</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ fontSize: 12, color: "var(--text-dim)", fontFamily: "var(--font-display)", letterSpacing: 1 }}>
-              {new Date().toLocaleTimeString("pt-BR")}
-            </div>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#00ff88", boxShadow: "0 0 6px #00ff88" }} />
-          </div>
-        </div>
-
-        <div className="dash-content">
-          {!p ? (
-            <>
-              {/* Metrics */}
-              <div className="metrics-row">
-                <div className="metric-card">
-                  <div className="metric-val" style={{ color: "var(--cyan)" }}>5</div>
-                  <div className="metric-lbl">Pacientes</div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-val" style={{ color: "#00ff88" }}>3</div>
-                  <div className="metric-lbl">Coletes online</div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-val" style={{ color: "#ffaa00" }}>12</div>
-                  <div className="metric-lbl">Alertas hoje</div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-val" style={{ color: "var(--cyan)" }}>78%</div>
-                  <div className="metric-lbl">Postura correta (média)</div>
-                </div>
-              </div>
-              
-              {/* Header da lista com o botão alinhado */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: 2, color: "var(--text-dim)", textTransform: "uppercase" }}>
-                  Lista de Pacientes
-                </div>
-                <button className="btn-cyan" style={{ padding: "8px 16px", fontSize: "10px" }} onClick={() => setModalPaciente(true)}>
-                  <span>+ Adicionar Paciente</span>
-                </button>
-              </div>
-
-              {/* Patient list */}
-              <div className="patient-list">
-                {PATIENTS.map((pt, i) => (
-                  <div key={i} className="patient-row" onClick={() => setSelected(i)}>
-                    <div className="patient-info">
-                      <div className={`status-dot ${pt.online ? "status-online" : "status-offline"}`} />
-                      <div className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
-                        {pt.name.split(" ").map(w => w[0]).join("")}
-                      </div>
-                      <div>
-                        <div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{pt.name}</div>
-                        <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{pt.condition}</div>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 12, color: pt.online ? "#00ff88" : "var(--text-dim)" }}>
-                        {pt.online ? "● Online" : "Offline"}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                        Colete: {pt.vestOn} {pt.vestOff ? `– ${pt.vestOff}` : "– em uso"}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            /* Patient Detail */
-            <>
-              <button className="btn-outline" style={{ marginBottom: 24, padding: "8px 16px", fontSize: "10px" }} onClick={() => setSelected(null)}>
-                ← Voltar
-              </button>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
-                <div className="metric-card">
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Paciente</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>{p.name}</div>
-                </div>
-                <div className="metric-card">
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Diagnóstico</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 12, color: "var(--cyan)" }}>{p.condition}</div>
-                </div>
-                <div className="metric-card">
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Status do Colete</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: p.online ? "#00ff88" : "#ff6677" }}>
-                    {p.online ? "● Online" : "Offline"}
-                  </div>
-                </div>
-                <div className="metric-card">
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Horário</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>
-                    {p.vestOn} {p.vestOff ? `– ${p.vestOff}` : "– em uso"}
-                  </div>
-                </div>
-              </div>
-
-              {/* Angles */}
-              <div className="glass graph-wrap" style={{ marginBottom: 20 }}>
-                <div className="graph-title">ANGULAÇÃO DA COLUNA — TEMPO REAL</div>
-                <div className="angle-bar">
-                  {[
-                    { name: "Cervical", val: p.cervical, max: 90 },
-                    { name: "Dorsal", val: p.dorsal, max: 90 },
-                    { name: "Lombar", val: p.lombar, max: 90 },
-                  ].map(a => {
-                    const pct = (a.val / a.max) * 100;
-                    const color = pct > 60 ? "#ff4455" : pct > 40 ? "#ffaa00" : "var(--cyan)";
-                    return (
-                      <div key={a.name} className="angle-row">
-                        <span className="angle-name">{a.name}</span>
-                        <div className="angle-track">
-                          <div className="angle-fill" style={{ width: `${pct}%`, background: color }} />
-                        </div>
-                        <span className="angle-val" style={{ color }}>{a.val}°</span>
-                        <span style={{ fontSize: 12, color: color === "var(--cyan)" ? "#00ff88" : color, marginLeft: 8 }}>
-                          {pct > 60 ? "⚠" : "✓"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Chart */}
-              <div className="glass graph-wrap">
-                <div className="graph-title">HISTÓRICO DE VARIAÇÃO POSTURAL — ÚLTIMA HORA</div>
-                <MiniChart data={chartData} />
-              </div>
-            </>
-          )}
-        </div>
-      </main>
-
-      {/* Modal de cadastro atualizado para Patologia */}
-      {modalPaciente && (
-        <div className="modal-overlay" onClick={() => setModalPaciente(false)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setModalPaciente(false)}>✕</button>
-            <div className="modal-title">Adicionar Paciente</div>
-            <div className="modal-sub">Preencha os dados do novo paciente</div>
-            
-            {/* Array mudou aqui para gerar input de patologia */}
-            {[{ key: "nome", label: "Nome Completo" }, { key: "patologia", label: "Patologia" }].map(f => (
-              <div key={f.key} className="form-group" style={{ marginBottom: 16 }}>
-                <label className="form-label">{f.label}</label>
-                <input className="form-input" placeholder={f.label}
-                  value={formPaciente[f.key]}
-                  onChange={e => setFormPaciente(prev => ({ ...prev, [f.key]: e.target.value }))} />
-              </div>
-            ))}
-
-            {msgPaciente && (
-              <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 13,
-                background: msgPaciente.startsWith("Erro") ? "rgba(255,68,85,0.1)" : "rgba(0,255,136,0.1)",
-                border: `1px solid ${msgPaciente.startsWith("Erro") ? "rgba(255,68,85,0.3)" : "rgba(0,255,136,0.3)"}`,
-                color: msgPaciente.startsWith("Erro") ? "#ff6677" : "#00ff88" }}>
-                {msgPaciente}
-              </div>
-            )}
-            <button className="btn-cyan" style={{ width: "100%", justifyContent: "center" }} onClick={salvarPaciente}>
-              <span>Salvar Paciente</span>
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── CLINIC DASHBOARD ─────────────────────────────────────────────
-const DOCTORS = [
-  { name: "Dr. Henrique Silva", crm: "CRM 58432", specialty: "Ortopedia", patients: [0, 1, 2] },
-  { name: "Dra. Mariana Costa", crm: "CRM 71204", specialty: "Fisioterapia", patients: [2, 3] },
-  { name: "Dr. Rafael Souza", crm: "CRM 39876", specialty: "Neurologia", patients: [4, 0] },
-];
-
-function ClinicDash({ onLogout }) {
-  const [selDoc, setSelDoc] = useState(null);
-
-  const d = selDoc !== null ? DOCTORS[selDoc] : null;
-
-  return (
-    <div className="dash-layout">
-      <aside className="sidebar">
-        <div className="sidebar-logo"><Logo size={18} /></div>
-        <ul className="sidebar-nav">
-          {[
-            { label: "Visão Geral", icon: "🏥" },
-            { label: "Médicos", icon: "👨‍⚕️" },
-            { label: "Pacientes", icon: "👥" },
-            { label: "Métricas", icon: "📊" },
-          ].map(n => (
-            <li key={n.label}>
-              <button><span>{n.icon}</span> {n.label}</button>
-            </li>
-          ))}
-        </ul>
-        <ul className="sidebar-nav" style={{ paddingTop: 16, borderTop: "1px solid var(--glass-border)" }}>
-          <li><button onClick={onLogout}><span>🚪</span> Sair</button></li>
-        </ul>
-      </aside>
-
-      <main className="dash-main">
-        <div className="dash-header">
-          <div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700 }}>
-              {d ? d.name : "Painel da Clínica"}
-            </div>
-            <div style={{ fontSize: 12, color: "var(--text-dim)" }}>Centro de Reabilitação PosturIA</div>
-          </div>
-        </div>
-
-        <div className="dash-content">
-          {!d ? (
-            <>
-              <div className="metrics-row">
-                <div className="metric-card">
-                  <div className="metric-val" style={{ color: "var(--cyan)" }}>3</div>
-                  <div className="metric-lbl">Médicos ativos</div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-val" style={{ color: "#00ff88" }}>5</div>
-                  <div className="metric-lbl">Pacientes totais</div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-val" style={{ color: "#00ff88" }}>3</div>
-                  <div className="metric-lbl">Coletes online</div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-val" style={{ color: "var(--cyan)" }}>82%</div>
-                  <div className="metric-lbl">Aderência média</div>
-                </div>
-              </div>
-
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: 2, color: "var(--text-dim)", marginBottom: 16, textTransform: "uppercase" }}>
-                Médicos da Clínica
-              </div>
-              <div className="patient-list">
-                {DOCTORS.map((doc, i) => (
-                  <div key={i} className="patient-row" onClick={() => setSelDoc(i)}>
-                    <div className="patient-info">
-                      <div className="avatar">{doc.name.split(" ").slice(0, 2).map(w => w[0]).join("")}</div>
-                      <div>
-                        <div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{doc.name}</div>
-                        <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{doc.specialty} — {doc.crm}</div>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
-                      {doc.patients.length} paciente{doc.patients.length > 1 ? "s" : ""}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <button className="btn-outline" style={{ marginBottom: 24, padding: "8px 16px", fontSize: "10px" }} onClick={() => setSelDoc(null)}>
-                ← Voltar
-              </button>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
-                <div className="metric-card">
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Especialidade</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--cyan)" }}>{d.specialty}</div>
-                </div>
-                <div className="metric-card">
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Registro</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>{d.crm}</div>
-                </div>
-              </div>
-
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: 2, color: "var(--text-dim)", marginBottom: 16, textTransform: "uppercase" }}>
-                Pacientes Vinculados
-              </div>
-              <div className="patient-list">
-                {d.patients.map(pi => {
-                  const pt = PATIENTS[pi];
-                  return (
-                    <div key={pi} className="patient-row" style={{ cursor: "default" }}>
-                      <div className="patient-info">
-                        <div className={`status-dot ${pt.online ? "status-online" : "status-offline"}`} />
-                        <div className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
-                          {pt.name.split(" ").map(w => w[0]).join("")}
-                        </div>
-                        <div>
-                          <div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{pt.name}</div>
-                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{pt.condition}</div>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 12, color: pt.online ? "#00ff88" : "var(--text-dim)" }}>
-                          {pt.online ? "● Online" : "Offline"}
-                        </div>
-                        <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                          Cervical {pt.cervical}° | Lombar {pt.lombar}°
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      </main>
     </div>
   );
 }
@@ -1891,7 +1501,7 @@ function ShopPage() {
             {/* Essencial */}
             <div className="plan-card">
               <div className="plan-name">Plano Essencial</div>
-              <div className="plan-price">R$699</div>
+              <div className="plan-price">R$499</div>
               <div className="plan-period">pagamento único + frete grátis</div>
               <ul className="plan-features">
                 <li>Colete PosturIA completo</li>
@@ -1910,7 +1520,7 @@ function ShopPage() {
             <div className="plan-card featured">
               <div className="plan-badge">Mais Popular</div>
               <div className="plan-name">Plano Premium IA+</div>
-              <div className="plan-price">R$899</div>
+              <div className="plan-price">R$699</div>
               <div className="plan-period">pagamento único + frete grátis</div>
               <ul className="plan-features">
                 <li>Tudo do plano Essencial</li>
@@ -1958,7 +1568,7 @@ function ShopPage() {
             {!success ? (
               <>
                 <div className="modal-title">
-                  {modal === "essential" ? "Plano Essencial — R$699" : "Plano Premium IA+ — R$899"}
+                  {modal === "essential" ? "Plano Essencial — R$499" : "Plano Premium IA+ — R$699"}
                 </div>
                 <div className="modal-sub">Preencha seus dados para prosseguir com a compra</div>
                 {[
@@ -2004,36 +1614,19 @@ function ShopPage() {
 function PosturIA() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState("home");
-  const [role, setRole] = useState(null); // medico | clinica
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 1800);
     return () => clearTimeout(t);
   }, []);
 
-  const handleLogin = (r) => {
-    setRole(r);
-    setPage("dashboard");
-  };
-
-  const handleLogout = () => {
-    setRole(null);
-    setPage("home");
-  };
-
   const renderPage = () => {
-    if (page === "login") return <LoginPage onLogin={handleLogin} />;
-    if (page === "dashboard") {
-      if (role === "medico") return <DoctorDash onLogout={handleLogout} />;
-      if (role === "clinica") return <ClinicDash onLogout={handleLogout} />;
-      return <LoginPage onLogin={handleLogin} />;
-    }
+    if (page === "login") return <LoginPage />;
     if (page === "contact") return <ContactPage />;
     if (page === "shop") return <ShopPage />;
     return <HomePage setPage={setPage} />;
   };
 
-  const isDash = page === "dashboard";
   const isLogin = page === "login";
 
   return (
@@ -2047,8 +1640,8 @@ function PosturIA() {
         <div className="loader-text">Iniciando Sistema</div>
       </div>
 
-      {/* Nav (not on dashboard) */}
-      {!isDash && !isLogin && <NavBar page={page} setPage={setPage} />}
+      {/* Nav (not on login) */}
+      {!isLogin && <NavBar page={page} setPage={setPage} />}
 
       {/* Page */}
       <div style={{ minHeight: "100vh" }}>

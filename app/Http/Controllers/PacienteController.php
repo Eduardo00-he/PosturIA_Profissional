@@ -29,7 +29,7 @@ class PacienteController extends Controller
     {
         $request->validate([
             'nome' => 'required|string|max:255',
-            'idade' => 'required|integer|min:0|max:120',
+            'data_nascimento' => 'required|date',
             'patologia' => 'required|string|max:255',
             'medico_id' => 'required|exists:medicos,id',
         ]);
@@ -46,7 +46,7 @@ class PacienteController extends Controller
             Pacientes::insert([
                 'id' => $novoId,
                 'nome' => $request->input('nome'),
-                'idade' => $request->input('idade'),
+                'data_nascimento' => $request->input('data_nascimento'),
                 'patologia' => $request->input('patologia'),
                 'medico_id' => $request->input('medico_id'),
                 'status_conexao' => $statusConexaoOnline ? 1 : 0,
@@ -83,4 +83,3 @@ class PacienteController extends Controller
         return $candidato;
     }
 }
- 
