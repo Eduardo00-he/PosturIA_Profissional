@@ -29,4 +29,24 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function clinica()
+    {
+        return $this->belongsTo(Clinicas::class, 'clinica_id');
+    }
+
+    public function medico()
+    {
+        return $this->hasOne(Medicos::class, 'user_id');
+    }
+
+    public function isClinicAdmin(): bool
+    {
+        return in_array($this->role, ['clinic_admin', 'clinica'], true);
+    }
+
+    public function isDoctor(): bool
+    {
+        return in_array($this->role, ['doctor', 'medico'], true);
+    }
 }

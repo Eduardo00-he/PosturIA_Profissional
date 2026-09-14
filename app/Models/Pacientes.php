@@ -13,6 +13,7 @@ class Pacientes extends Model
 
     protected $fillable = [
         'nome',
+        'data_nascimento',
         'patologia',
         'medico_id',
         'status_conexao',

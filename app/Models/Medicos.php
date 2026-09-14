@@ -15,13 +15,17 @@ class Medicos extends Model
         'nome',
         'crm',
         'area',
-        'clinica_id',
         'data_nascimento', // ADICIONADO AQUI!
     ];
 
     public function clinica()
     {
         return $this->belongsTo(Clinicas::class, 'clinica_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function pacientes()
