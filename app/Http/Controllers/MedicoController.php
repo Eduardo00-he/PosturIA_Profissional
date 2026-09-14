@@ -4,57 +4,45 @@ namespace App\Http\Controllers;
 
 use App\Models\Medicos;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MedicoController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $query = Medicos::with('pacientes');
-
-        if ($request->has('clinica_id')) {
-            $query->where('clinica_id', $request->query('clinica_id'));
-        }
-
-        return response()->json($query->get());
+        return response()->json(
+            $this->accessibleMedicos()->with('pacientes')->limit(100)->get()
+        );
     }
 
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        'nome'            => 'required|string|max:255',
-        'crm'             => 'required|string|max:20|unique:medicos,crm',
-        'data_nascimento' => 'required|date',
-        'area'            => 'required|string',
-    ]);
-
-    $clinicaId = auth()->id() ?? 1; 
-
-    $medico = Medicos::create([
-        'nome'            => $validated['nome'],
-        'crm'             => $validated['crm'],
-        'data_nascimento' => $validated['data_nascimento'],
-        'area'            => $validated['area'],
-        'clinica_id'      => $clinicaId, 
-    ]);
- 
-    return response()->json($medico, 201);
-}
-
-        public function show($id)
-{
-   $medico = Medicos::with(['pacientes'])->find($id);
-
-   if (!$medico) {
-           return response()->json(['message' => 'Médico não encontrado.'], 404);
-        }
-
-    return response()->json($medico);
-}
-
-
-    public function destroy($id)
     {
-        $medico = Medicos::findOrFail($id);
+        abort_unless($request->user()->isClinicAdmin(), 403);
+
+        $validated = $request->validate([
+            'nome' => ['required', 'string', 'max:255'],
+            'crm' => ['required', 'string', 'max:20', Rule::unique('medicos', 'crm')],
+            'data_nascimento' => ['required', 'date', 'before_or_equal:today'],
+            'area' => ['required', 'string', 'max:100'],
+        ]);
+
+        $medico = Medicos::create([...$validated, 'clinica_id' => $this->clinicId()]);
+
+        return response()->json($medico, 201);
+    }
+
+    public function show(int $id)
+    {
+        return response()->json(
+            $this->accessibleMedicos()->with('pacientes')->findOrFail($id)
+        );
+    }
+
+    public function destroy(int $id)
+    {
+        abort_unless(request()->user()->isClinicAdmin(), 403);
+
+        $medico = $this->accessibleMedicos()->findOrFail($id);
 
         if ($medico->pacientes()->exists()) {
             return response()->json([

@@ -1326,72 +1326,13 @@ function HomePage({ setPage }) {
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────
 function LoginPage() {
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [err, setErr] = useState("");
-  const [step, setStep] = useState("login"); // login | role
-
-  const handleLogin = () => {
-    if (user === "Eduardo0" && pass === "Posturia0.") {
-      setStep("role");
-    } else {
-      setErr("Credenciais inválidas.");
-    }
-  };
-
-  const goToAdmin = (role) => {
-    router.visit("/admin", { data: { role } });
-  };
-
-  if (step === "role") {
-    return (
-      <div className="login-wrap grid-bg">
-        <div style={{ textAlign: "center" }}>
-          <Logo size={28} />
-          <h2 style={{ fontFamily: "var(--font-display)", marginTop: 32, marginBottom: 8, color: "var(--text)" }}>
-            Bem-vindo, Eduardo
-          </h2>
-          <p style={{ color: "var(--text-dim)", marginBottom: 40 }}>Como deseja acessar o sistema?</p>
-          <div className="role-grid" style={{ maxWidth: 400, margin: "0 auto" }}>
-            <div className="role-card" onClick={() => goToAdmin("medico")}>
-              <div className="role-icon">👨‍⚕️</div>
-              <div className="role-name">Médico</div>
-            </div>
-            <div className="role-card" onClick={() => goToAdmin("clinica")}>
-              <div className="role-icon">🏥</div>
-              <div className="role-name">Clínica</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="login-wrap grid-bg">
       <div className="glass login-card">
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <Logo size={26} />
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text-dim)", marginTop: 12, letterSpacing: 2, fontWeight: 400 }}>
-            ÁREA PROFISSIONAL
-          </h2>
-        </div>
-        {err && (
-          <div style={{ background: "rgba(255,68,85,0.08)", border: "1px solid rgba(255,68,85,0.3)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#ff6677" }}>
-            {err}
-          </div>
-        )}
-        <div className="form-group">
-          <label className="form-label">Login</label>
-          <input className="form-input" value={user} onChange={e => { setUser(e.target.value); setErr(""); }} placeholder="Digite seu login" />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Senha</label>
-          <input className="form-input" type="password" value={pass} onChange={e => { setPass(e.target.value); setErr(""); }} placeholder="••••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
-        </div>
-        <button className="btn-cyan" style={{ width: "100%", marginTop: 8, justifyContent: "center" }} onClick={handleLogin}>
-          <span>Acessar Sistema</span>
-        </button>
+        <Logo size={26} />
+        <h2 className="form-label">ÁREA PROFISSIONAL</h2>
+        <p>Use o login seguro da plataforma para continuar.</p>
+        <a className="btn-cyan" href="/login">Acessar sistema</a>
       </div>
     </div>
   );

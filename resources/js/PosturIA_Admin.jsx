@@ -1171,10 +1171,10 @@ function Logo({ size = 24 }) {
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────
-export default function App({ role: initialRole }) {
+export default function App({ role: initialRole, medicoId }) {
   const [page, setPage] = useState("home");
-  const [role, setRole] = useState(initialRole || null);
-  const [loggedIn, setLoggedIn] = useState(!!initialRole);
+  const [role] = useState(initialRole || null);
+  const [loggedIn] = useState(Boolean(initialRole));
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -1188,175 +1188,22 @@ export default function App({ role: initialRole }) {
   };
 
   if (loggedIn && role === "medico") {
-    return <DoctorDash onLogout={handleLogout} />;
+    return <DoctorDash medicoId={medicoId} onLogout={handleLogout} />;
   }
   if (loggedIn && role === "clinica") {
     return <ClinicDash onLogout={handleLogout} />;
   }
   if (!loggedIn) {
-    return <LoginPage onLogin={(r) => { setRole(r); setLoggedIn(true); }} />;
+    return <AccessRequired />;
   }
 
   return <HomePage />;
 }
 
-// ─── LOGIN PAGE ───────────────────────────────────────────────────
-function LoginPage({ onLogin }) {
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [err, setErr] = useState("");
-  const [step, setStep] = useState("login"); // login | role | medico-select
-  const [medicos, setMedicos] = useState([]);
-  const [selectedMedico, setSelectedMedico] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = () => {
-    if (user === "Eduardo0" && pass === "Posturia0.") {
-      setStep("role");
-      setErr("");
-    } else {
-      setErr("Credenciais inválidas.");
-    }
-  };
-
-  const handleRoleSelect = async (role) => {
-    if (role === "medico") {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/medicos");
-        if (res.ok) {
-          const data = await res.json();
-          setMedicos(data);
-          setStep("medico-select");
-        } else {
-          setErr("Erro ao carregar médicos.");
-        }
-      } catch {
-        setErr("Erro de conexão ao buscar médicos.");
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      onLogin(role);
-    }
-  };
-
-  const handleMedicoSelect = () => {
-    if (selectedMedico) {
-      sessionStorage.setItem("medico_id", selectedMedico);
-      onLogin("medico");
-    }
-  };
-
-  if (step === "medico-select") {
-    return (
-      <div className="login-wrap grid-bg">
-        <div style={{ textAlign: "center" }}>
-          <Logo size={28} />
-          <h2 style={{ fontFamily: "var(--font-display)", marginTop: 32, marginBottom: 8, color: "var(--text)" }}>
-            Selecione seu Perfil
-          </h2>
-          <p style={{ color: "var(--text-dim)", marginBottom: 40 }}>Qual médico você é?</p>
-          <div style={{ maxWidth: 500, margin: "0 auto" }}>
-            {medicos.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {medicos.map(med => (
-                  <div
-                    key={med.id}
-                    onClick={() => setSelectedMedico(med.id)}
-                    style={{
-                      padding: 16,
-                      background: selectedMedico === med.id ? "rgba(0,245,255,0.12)" : "rgba(0,245,255,0.04)",
-                      border: `1px solid ${selectedMedico === med.id ? "var(--cyan)" : "rgba(0,245,255,0.12)"}`,
-                      borderRadius: 8,
-                      cursor: "pointer",
-                      transition: "all 0.3s",
-                      textAlign: "left",
-                    }}
-                  >
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>
-                      {med.nome}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}>
-                      {med.area} • {med.crm}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ color: "var(--text-dim)" }}>Nenhum médico cadastrado.</p>
-            )}
-            <button
-              className="btn-cyan"
-              style={{ width: "100%", marginTop: 24, justifyContent: "center" }}
-              onClick={handleMedicoSelect}
-              disabled={!selectedMedico}
-            >
-              <span>Continuar</span>
-            </button>
-            <button
-              className="btn-outline"
-              style={{ width: "100%", marginTop: 12, justifyContent: "center" }}
-              onClick={() => setStep("role")}
-            >
-              <span>Voltar</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === "role") {
-    return (
-      <div className="login-wrap grid-bg">
-        <div style={{ textAlign: "center" }}>
-          <Logo size={28} />
-          <h2 style={{ fontFamily: "var(--font-display)", marginTop: 32, marginBottom: 8, color: "var(--text)" }}>
-            Bem-vindo, Eduardo
-          </h2>
-          <p style={{ color: "var(--text-dim)", marginBottom: 40 }}>Como deseja acessar o sistema?</p>
-          <div className="role-grid" style={{ maxWidth: 400, margin: "0 auto" }}>
-            <div className="role-card" onClick={() => handleRoleSelect("medico")}>
-              <div className="role-icon">👨‍⚕️</div>
-              <div className="role-name">Médico</div>
-            </div>
-            <div className="role-card" onClick={() => handleRoleSelect("clinica")}>
-              <div className="role-icon">🏥</div>
-              <div className="role-name">Clínica</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+function AccessRequired() {
   return (
     <div className="login-wrap grid-bg">
-      <div className="glass login-card">
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <Logo size={26} />
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text-dim)", marginTop: 12, letterSpacing: 2, fontWeight: 400 }}>
-            ÁREA PROFISSIONAL
-          </h2>
-        </div>
-        {err && (
-          <div style={{ background: "rgba(255,68,85,0.08)", border: "1px solid rgba(255,68,85,0.3)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#ff6677" }}>
-            {err}
-          </div>
-        )}
-        <div className="form-group">
-          <label className="form-label">Login</label>
-          <input className="form-input" value={user} onChange={e => { setUser(e.target.value); setErr(""); }} placeholder="Digite seu login" />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Senha</label>
-          <input className="form-input" type="password" value={pass} onChange={e => { setPass(e.target.value); setErr(""); }} placeholder="••••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
-        </div>
-        <button className="btn-cyan" style={{ width: "100%", marginTop: 8, justifyContent: "center" }} onClick={handleLogin} disabled={loading}>
-          <span>{loading ? "Carregando..." : "Acessar Sistema"}</span>
-        </button>
-      </div>
+      <div className="glass login-card">Acesso não autorizado.</div>
     </div>
   );
 }
@@ -1372,7 +1219,7 @@ function RelatoriosView({ pacientes }) {
   useEffect(() => {
     if (modo === "individual" && pacienteId) {
       setLoading(true);
-      fetch(`/api/historico-postura?paciente_id=${pacienteId}`)
+      window.apiFetch(`/api/historico-postura?paciente_id=${pacienteId}`)
         .then(res => res.ok ? res.json() : [])
         .then(data => setHistorico(data))
         .catch(() => setHistorico([]))
@@ -1385,7 +1232,7 @@ function RelatoriosView({ pacientes }) {
       setLoading(true);
       Promise.all(
         pacientes.map(pt =>
-          fetch(`/api/historico-postura?paciente_id=${pt.id}`).then(res => res.ok ? res.json() : [])
+          window.apiFetch(`/api/historico-postura?paciente_id=${pt.id}`).then(res => res.ok ? res.json() : [])
         )
       )
         .then(resultados => {
@@ -1472,7 +1319,7 @@ function AgendaView({ pacientes, medicoId }) {
   const [loading, setLoading] = useState(false);
 
   const fetchConsultas = () => {
-    fetch(`/api/consultas?medico_id=${medicoId}`)
+    window.apiFetch(`/api/consultas?medico_id=${medicoId}`)
       .then(res => res.ok ? res.json() : [])
       .then(data => setConsultas(data))
       .catch(() => setConsultas([]));
@@ -1487,7 +1334,7 @@ function AgendaView({ pacientes, medicoId }) {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/consultas", {
+      const res = await window.apiFetch("/api/consultas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1515,7 +1362,7 @@ function AgendaView({ pacientes, medicoId }) {
 
   const removerConsulta = async (id) => {
     try {
-      await fetch(`/api/consultas/${id}`, { method: "DELETE" });
+      await window.apiFetch(`/api/consultas/${id}`, { method: "DELETE" });
       fetchConsultas();
     } catch {}
   };
@@ -1647,7 +1494,7 @@ function AlertasView({ medicoId }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/alertas?medico_id=${medicoId}`)
+    window.apiFetch(`/api/alertas?medico_id=${medicoId}`)
       .then(res => res.ok ? res.json() : [])
       .then(data => setAlertas(data))
       .catch(() => setAlertas([]))
@@ -1693,7 +1540,7 @@ function AlertasView({ medicoId }) {
 }
 
 // ─── DOCTOR DASHBOARD ─────────────────────────────────────────────
-function DoctorDash({ onLogout }) {
+function DoctorDash({ medicoId: authenticatedMedicoId, onLogout }) {
   const [selected, setSelected] = useState(null);
   const [activeNav, setActiveNav] = useState("pacientes");
   const [chartData, setChartData] = useState([30, 45, 35, 60, 40, 55, 38]);
@@ -1704,13 +1551,13 @@ function DoctorDash({ onLogout }) {
   const [loading, setLoading] = useState(false);
   const [medicoInfo, setMedicoInfo] = useState(null);
 
-  const medicoId = parseInt(sessionStorage.getItem("medico_id") || "1");
+  const medicoId = authenticatedMedicoId;
 
   useEffect(() => {
     // Buscar informações do médico
     const fetchMedicoInfo = async () => {
       try {
-        const res = await fetch(`/api/medicos/${medicoId}`);
+        const res = await window.apiFetch(`/api/medicos/${medicoId}`);
         if (res.ok) {
           const data = await res.json();
           setMedicoInfo(data);
@@ -1723,7 +1570,7 @@ function DoctorDash({ onLogout }) {
     // Buscar pacientes do médico
     const fetchPacientes = async () => {
       try {
-        const res = await fetch(`/api/pacientes?medico_id=${medicoId}`);
+        const res = await window.apiFetch(`/api/pacientes?medico_id=${medicoId}`);
         if (res.ok) {
           const data = await res.json();
           setPacientes(data);
@@ -1745,7 +1592,7 @@ function DoctorDash({ onLogout }) {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/pacientes", {
+      const res = await window.apiFetch("/api/pacientes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2203,7 +2050,7 @@ function ClinicDash({ onLogout }) {
   useEffect(() => {
     const fetchMedicos = async () => {
       try {
-        const res = await fetch("/api/medicos");
+        const res = await window.apiFetch("/api/medicos");
         if (res.ok) {
           const data = await res.json();
           setMedicos(data);
@@ -2241,7 +2088,7 @@ function ClinicDash({ onLogout }) {
  
     setLoading(true);
     try {
-      const res = await fetch("/api/medicos", {
+      const res = await window.apiFetch("/api/medicos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

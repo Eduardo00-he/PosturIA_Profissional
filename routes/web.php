@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -15,17 +14,20 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/admin', function (Request $request) {
-    return Inertia::render('Admin', [
-        'role' => $request->query('role'),
-    ]);
-})->name('admin');
+Route::middleware(['auth', 'verified'])->group(function (): void {
+    Route::get('/admin', function () {
+        $user = request()->user();
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+        return Inertia::render('Admin', [
+            'role' => $user->isDoctor() ? 'medico' : 'clinica',
+            'medicoId' => $user->medico?->id,
+        ]);
+    })->name('admin');
 
-Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
