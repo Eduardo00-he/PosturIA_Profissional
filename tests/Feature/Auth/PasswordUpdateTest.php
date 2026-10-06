@@ -48,4 +48,19 @@ class PasswordUpdateTest extends TestCase
             ->assertSessionHasErrors('current_password')
             ->assertRedirect('/profile');
     }
+
+    public function test_password_must_have_at_least_twelve_characters(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->from('/profile')
+            ->put('/password', [
+                'current_password' => 'password',
+                'password' => 'too-short',
+                'password_confirmation' => 'too-short',
+            ])
+            ->assertSessionHasErrors('password')
+            ->assertRedirect('/profile');
+    }
 }

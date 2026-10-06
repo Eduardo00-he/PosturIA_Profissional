@@ -3,62 +3,71 @@
 namespace App\Http\Controllers;
 
 use App\Models\Medicos;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MedicoController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Medicos::with('pacientes');
+        $validated = $request->validate([
+            'clinica_id' => ['sometimes', 'integer', 'min:1'],
+            'medico_id' => ['sometimes', 'integer', 'min:1'],
+        ]);
 
-        if ($request->has('clinica_id')) {
-            $query->where('clinica_id', $request->query('clinica_id'));
+        $query = Medicos::visibleTo($request->user())
+            ->with('pacientes')
+            ->orderBy('nome');
+
+        if (isset($validated['clinica_id'])) {
+            $query->where('clinica_id', $validated['clinica_id']);
+        }
+
+        if (isset($validated['medico_id'])) {
+            $query->whereKey($validated['medico_id']);
         }
 
         return response()->json($query->get());
     }
 
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        'nome'            => 'required|string|max:255',
-        'crm'             => 'required|string|max:20|unique:medicos,crm',
-        'data_nascimento' => 'required|date',
-        'area'            => 'required|string',
-    ]);
-
-    $clinicaId = auth()->id() ?? 1; 
-
-    $medico = Medicos::create([
-        'nome'            => $validated['nome'],
-        'crm'             => $validated['crm'],
-        'data_nascimento' => $validated['data_nascimento'],
-        'area'            => $validated['area'],
-        'clinica_id'      => $clinicaId, 
-    ]);
- 
-    return response()->json($medico, 201);
-}
-
-        public function show($id)
-{
-   $medico = Medicos::with(['pacientes'])->find($id);
-
-   if (!$medico) {
-           return response()->json(['message' => 'Médico não encontrado.'], 404);
-        }
-
-    return response()->json($medico);
-}
-
-
-    public function destroy($id)
     {
-        $medico = Medicos::findOrFail($id);
+        abort_unless($request->user()->role === User::ROLE_CLINICA, 403);
 
-        if ($medico->pacientes()->exists()) {
+        $validated = $request->validate([
+            'nome' => ['required', 'string', 'max:255'],
+            'registro_profissional' => ['required', 'string', 'max:30', 'unique:medicos,registro_profissional'],
+            'data_nascimento' => ['required', 'date', 'before:today'],
+            'area' => ['required', Rule::in(['fisioterapeuta', 'ortopedista'])],
+        ]);
+
+        $medico = Medicos::create([
+            ...$validated,
+            'clinica_id' => $request->user()->clinica_id,
+        ]);
+
+        return response()->json($medico, 201);
+    }
+
+    public function show(Request $request, int $id)
+    {
+        $medico = Medicos::visibleTo($request->user())
+            ->with('pacientes')
+            ->findOrFail($id);
+
+        return response()->json($medico);
+    }
+
+    public function destroy(Request $request, int $id)
+    {
+        abort_unless($request->user()->role === User::ROLE_CLINICA, 403);
+
+        $medico = Medicos::visibleTo($request->user())->findOrFail($id);
+
+        if ($medico->pacientes()->exists() || $medico->consultas()->exists() || $medico->user_id !== null) {
             return response()->json([
-                'message' => 'Não é possível excluir: este médico possui pacientes vinculados.',
+                'message' => 'Não é possível excluir este médico enquanto houver pacientes, consultas ou conta vinculada.',
             ], 422);
         }
 

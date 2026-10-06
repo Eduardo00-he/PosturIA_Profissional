@@ -2,64 +2,61 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\Pacientes;
-use App\Models\Medicos;
 use App\Models\Clinicas;
+use App\Models\Medicos;
+use App\Models\Pacientes;
+use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. firstOrCreate tenta buscar a clínica 1. Se achar, usa ela. Se não achar, cria!
+        if (! app()->environment(['local', 'testing'])) {
+            $this->command?->warn('Seed de demonstração bloqueado fora de local/testing.');
+            return;
+        }
+
         $clinica = Clinicas::firstOrCreate(
             ['id' => 1],
+            ['nome' => 'PosturIA — Clínica de Demonstração', 'cidade' => 'Belo Horizonte']
+        );
+
+        $medicosBase = [
+            ['nome' => 'Dr. Henrique Silva', 'data_nascimento' => '1985-05-15', 'area' => 'ortopedista', 'registro_profissional' => 'DEMO-CRM-001'],
+            ['nome' => 'Dra. Mariana Costa', 'data_nascimento' => '1991-08-22', 'area' => 'fisioterapeuta', 'registro_profissional' => 'DEMO-CREFITO-002'],
+            ['nome' => 'Dr. Rafael Souza', 'data_nascimento' => '1987-11-03', 'area' => 'ortopedista', 'registro_profissional' => 'DEMO-CRM-003'],
+        ];
+
+        $medicos = [];
+        foreach ($medicosBase as $dados) {
+            $medicos[] = Medicos::firstOrCreate(
+                ['registro_profissional' => $dados['registro_profissional']],
+                [...$dados, 'clinica_id' => $clinica->id]
+            );
+        }
+
+        Pacientes::firstOrCreate(
+            ['nome' => 'Lucas Almeida (demo)', 'medico_id' => $medicos[0]->id],
             [
-                'nome' => 'PosturIA Ortopedic Clinic',
-                'cidade' => 'Belo Horizonte'
+                'data_nascimento' => '1990-04-12',
+                'patologia' => 'Lombalgia — dado fictício de demonstração',
+                'status_conexao' => null,
+                'colete_horario_uso' => null,
+                'postura_media_percentual' => null,
             ]
         );
 
-        // ALTERADO: Trocado 'idade' por 'data_nascimento' com datas fictícias correspondentes
-        $medicosBase = [
-            ['id' => 1, 'nome' => 'Dr. Henrique Silva', 'data_nascimento' => '1985-05-15', 'area' => 'ortopedista',    'crm' => 'CRM-ORTO-58432'],
-            ['id' => 2, 'nome' => 'Dra. Mariana Costa',  'data_nascimento' => '1991-08-22', 'area' => 'fisioterapeuta', 'crm' => 'CRM-FISIO-71204'],
-            ['id' => 3, 'nome' => 'Dr. Rafael Souza',    'data_nascimento' => '1987-11-03', 'area' => 'ortopedista',    'crm' => 'CRM-ORTO-39876'],
-        ];
+        Pacientes::firstOrCreate(
+            ['nome' => 'Pedro Martins (demo)', 'medico_id' => $medicos[0]->id],
+            [
+                'data_nascimento' => '1988-09-30',
+                'patologia' => 'Escoliose — dado fictício de demonstração',
+                'status_conexao' => null,
+                'colete_horario_uso' => null,
+                'postura_media_percentual' => null,
+            ]
+        );
 
-        foreach ($medicosBase as $dados) {
-            Medicos::firstOrCreate(
-                ['id' => $dados['id']],
-                [
-                    'nome' => $dados['nome'],
-                    'data_nascimento' => $dados['data_nascimento'], // ALTERADO AQUI TAMBÉM
-                    'area' => $dados['area'],
-                    'crm' => $dados['crm'],
-                    'clinica_id' => $clinica->id,
-                ]
-            );
-        } // fecha o foreach
-
-        // 3. Para os pacientes, como eles não têm ID fixo no código, vamos limpar a tabela antes de reinserir
-        // Assim evita acumular nomes repetidos toda vez que rodar o comando
-        Pacientes::query()->delete();
-
-        Pacientes::create([
-            'medico_id' => 1,
-            'nome' => 'Lucas Almeida',
-            'patologia' => 'Lombalgia Crônica',
-            'status_conexao' => 1,
-            'colete_horario_uso' => '2026-06-12 08:15:00',
-            'postura_media_percentual' => 78.00
-        ]);
-
-        Pacientes::create([
-            'medico_id' => 1,
-            'nome' => 'Pedro Martins',
-            'patologia' => 'Escoliose Leve',
-            'status_conexao' => 1,
-            'colete_horario_uso' => '2026-06-12 09:02:00',
-            'postura_media_percentual' => 62.00
-        ]);
+        $this->command?->info('Dados fictícios locais criados sem remover registros existentes.');
     }
 }

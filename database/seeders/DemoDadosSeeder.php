@@ -13,6 +13,11 @@ class DemoDadosSeeder extends Seeder
 {
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            $this->command?->error('Dados sintéticos são proibidos fora de local/testing.');
+            return;
+        }
+
         $pacientes = Pacientes::all();
 
         if ($pacientes->isEmpty()) {
@@ -25,28 +30,32 @@ class DemoDadosSeeder extends Seeder
                 continue;
             }
 
-            // Histórico de postura: últimos 14 dias
-            for ($i = 13; $i >= 0; $i--) {
-                HistoricoPostura::create([
+            // Valores aleatórios apenas em dados de demonstração local.
+            if (! $paciente->historicoPostura()->exists()) {
+                for ($i = 13; $i >= 0; $i--) {
+                    HistoricoPostura::create([
+                        'paciente_id' => $paciente->id,
+                        'percentual' => rand(55, 95),
+                        'registrado_em' => Carbon::now()->subDays($i),
+                    ]);
+                }
+            }
+
+            if (! $paciente->consultas()->exists()) {
+                Consultas::create([
                     'paciente_id' => $paciente->id,
-                    'percentual' => rand(55, 95),
-                    'registrado_em' => Carbon::now()->subDays($i),
+                    'medico_id' => $paciente->medico_id,
+                    'data_hora' => Carbon::now()->addDays(rand(1, 10))->setTime(rand(8, 17), 0),
+                    'observacao' => 'Consulta de demonstração',
                 ]);
             }
 
-            // Consultas: 2 futuras
-            Consultas::create([
-                'paciente_id' => $paciente->id,
-                'medico_id' => $paciente->medico_id,
-                'data_hora' => Carbon::now()->addDays(rand(1, 10))->setTime(rand(8, 17), 0),
-                'observacao' => 'Consulta de acompanhamento',
-            ]);
-
-            // Alertas: 1 ou 2 recentes
-            Alertas::create([
-                'paciente_id' => $paciente->id,
-                'descricao_alerta' => 'Postura inadequada detectada por tempo prolongado',
-            ]);
+            if (! $paciente->alertas()->exists()) {
+                Alertas::create([
+                    'paciente_id' => $paciente->id,
+                    'descricao_alerta' => 'Alerta fictício de demonstração — não é dado clínico real',
+                ]);
+            }
         }
 
         $this->command->info('Dados de demonstração criados com sucesso.');
