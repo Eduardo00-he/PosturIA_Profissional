@@ -9,30 +9,25 @@ class AlertaController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Alertas::with('pacientes');
-
-        if ($request->has('medico_id')) {
-            $query->whereHas('pacientes', function ($q) use ($request) {
-                $q->where('medico_id', $request->query('medico_id'));
-            });
-        }
-
-        if ($request->has('paciente_id')) {
-            $query->where('paciente_id', $request->query('paciente_id'));
-        }
-
-        return response()->json($query->orderByDesc('criado_em')->get());
-    }
-
-    public function store(Request $request)
-    {
-        $request->validate([
-            'paciente_id' => 'required|exists:pacientes,id',
-            'descricao_alerta' => 'required|string|max:255',
+        $validated = $request->validate([
+            'medico_id' => ['sometimes', 'integer', 'min:1'],
+            'paciente_id' => ['sometimes', 'integer', 'min:1'],
         ]);
 
-        $alerta = Alertas::create($request->only('paciente_id', 'descricao_alerta'));
+        $query = Alertas::visibleTo($request->user())
+            ->where('verificado', true)
+            ->with('pacientes')
+            ->orderByDesc('criado_em');
 
-        return response()->json($alerta, 201);
+        if (isset($validated['medico_id'])) {
+            $query->whereHas('pacientes', fn ($patients) => $patients->where('medico_id', $validated['medico_id']));
+        }
+
+        if (isset($validated['paciente_id'])) {
+            $query->where('paciente_id', $validated['paciente_id']);
+        }
+
+        return response()->json($query->get());
     }
+
 }

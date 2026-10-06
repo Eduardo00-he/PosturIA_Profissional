@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { router } from "@inertiajs/react";
+import { apiFetch, apiFetch as fetch } from "./api";
 
 // ─── Global Styles ───────────────────────────────────────────────
 const globalStyles = `
@@ -645,6 +646,10 @@ const globalStyles = `
     background: #ff6677;
     box-shadow: 0 0 6px #ff6677;
   }
+  .status-unknown {
+    background: var(--text-dim);
+    box-shadow: none;
+  }
   .avatar {
     width: 40px;
     height: 40px;
@@ -1048,9 +1053,8 @@ function MiniChart({ data }) {
     // ✅ CORREÇÃO 1: Limpa de verdade o canvas antes de qualquer novo desenho
     ctx.clearRect(0, 0, w, h);
 
-    // ✅ CORREÇÃO 2 ALTERADA: Se o paciente não tiver dados reais, gera uma linha padrão bonita!
-    const dadosPadrao = [60, 65, 63, 72, 68, 80, 78, 85]; // Simula uma evolução parecida com a do Lucas
-    const safeData = Array.isArray(data) && data.length > 0 ? data : dadosPadrao;
+    const safeData = Array.isArray(data) ? data.map(Number).filter(Number.isFinite) : [];
+    if (safeData.length === 0) return;
 
     const max = 100; // Limite fixo de 100% para avaliação postural
     const min = 0;
@@ -1171,10 +1175,7 @@ function Logo({ size = 24 }) {
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────
-export default function App({ role: initialRole }) {
-  const [page, setPage] = useState("home");
-  const [role, setRole] = useState(initialRole || null);
-  const [loggedIn, setLoggedIn] = useState(!!initialRole);
+export default function App({ role, medicoId, userName, clinicName }) {
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -1183,178 +1184,24 @@ export default function App({ role: initialRole }) {
     return () => style.remove();
   }, []);
 
-  const handleLogout = () => {
-    router.visit("/");
-  };
+  const handleLogout = () => router.post("/logout");
 
-  if (loggedIn && role === "medico") {
-    return <DoctorDash onLogout={handleLogout} />;
+  if (role === "medico" && medicoId) {
+    return <DoctorDash onLogout={handleLogout} medicoId={medicoId} userName={userName} />;
   }
-  if (loggedIn && role === "clinica") {
-    return <ClinicDash onLogout={handleLogout} />;
-  }
-  if (!loggedIn) {
-    return <LoginPage onLogin={(r) => { setRole(r); setLoggedIn(true); }} />;
-  }
-
-  return <HomePage />;
-}
-
-// ─── LOGIN PAGE ───────────────────────────────────────────────────
-function LoginPage({ onLogin }) {
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [err, setErr] = useState("");
-  const [step, setStep] = useState("login"); // login | role | medico-select
-  const [medicos, setMedicos] = useState([]);
-  const [selectedMedico, setSelectedMedico] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = () => {
-    if (user === "Eduardo0" && pass === "Posturia0.") {
-      setStep("role");
-      setErr("");
-    } else {
-      setErr("Credenciais inválidas.");
-    }
-  };
-
-  const handleRoleSelect = async (role) => {
-    if (role === "medico") {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/medicos");
-        if (res.ok) {
-          const data = await res.json();
-          setMedicos(data);
-          setStep("medico-select");
-        } else {
-          setErr("Erro ao carregar médicos.");
-        }
-      } catch {
-        setErr("Erro de conexão ao buscar médicos.");
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      onLogin(role);
-    }
-  };
-
-  const handleMedicoSelect = () => {
-    if (selectedMedico) {
-      sessionStorage.setItem("medico_id", selectedMedico);
-      onLogin("medico");
-    }
-  };
-
-  if (step === "medico-select") {
-    return (
-      <div className="login-wrap grid-bg">
-        <div style={{ textAlign: "center" }}>
-          <Logo size={28} />
-          <h2 style={{ fontFamily: "var(--font-display)", marginTop: 32, marginBottom: 8, color: "var(--text)" }}>
-            Selecione seu Perfil
-          </h2>
-          <p style={{ color: "var(--text-dim)", marginBottom: 40 }}>Qual médico você é?</p>
-          <div style={{ maxWidth: 500, margin: "0 auto" }}>
-            {medicos.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {medicos.map(med => (
-                  <div
-                    key={med.id}
-                    onClick={() => setSelectedMedico(med.id)}
-                    style={{
-                      padding: 16,
-                      background: selectedMedico === med.id ? "rgba(0,245,255,0.12)" : "rgba(0,245,255,0.04)",
-                      border: `1px solid ${selectedMedico === med.id ? "var(--cyan)" : "rgba(0,245,255,0.12)"}`,
-                      borderRadius: 8,
-                      cursor: "pointer",
-                      transition: "all 0.3s",
-                      textAlign: "left",
-                    }}
-                  >
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>
-                      {med.nome}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}>
-                      {med.area} • {med.crm}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ color: "var(--text-dim)" }}>Nenhum médico cadastrado.</p>
-            )}
-            <button
-              className="btn-cyan"
-              style={{ width: "100%", marginTop: 24, justifyContent: "center" }}
-              onClick={handleMedicoSelect}
-              disabled={!selectedMedico}
-            >
-              <span>Continuar</span>
-            </button>
-            <button
-              className="btn-outline"
-              style={{ width: "100%", marginTop: 12, justifyContent: "center" }}
-              onClick={() => setStep("role")}
-            >
-              <span>Voltar</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === "role") {
-    return (
-      <div className="login-wrap grid-bg">
-        <div style={{ textAlign: "center" }}>
-          <Logo size={28} />
-          <h2 style={{ fontFamily: "var(--font-display)", marginTop: 32, marginBottom: 8, color: "var(--text)" }}>
-            Bem-vindo, Eduardo
-          </h2>
-          <p style={{ color: "var(--text-dim)", marginBottom: 40 }}>Como deseja acessar o sistema?</p>
-          <div className="role-grid" style={{ maxWidth: 400, margin: "0 auto" }}>
-            <div className="role-card" onClick={() => handleRoleSelect("medico")}>
-              <div className="role-icon">👨‍⚕️</div>
-              <div className="role-name">Médico</div>
-            </div>
-            <div className="role-card" onClick={() => handleRoleSelect("clinica")}>
-              <div className="role-icon">🏥</div>
-              <div className="role-name">Clínica</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  if (role === "clinica") {
+    return <ClinicDash onLogout={handleLogout} clinicName={clinicName} />;
   }
 
   return (
     <div className="login-wrap grid-bg">
-      <div className="glass login-card">
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <Logo size={26} />
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text-dim)", marginTop: 12, letterSpacing: 2, fontWeight: 400 }}>
-            ÁREA PROFISSIONAL
-          </h2>
-        </div>
-        {err && (
-          <div style={{ background: "rgba(255,68,85,0.08)", border: "1px solid rgba(255,68,85,0.3)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#ff6677" }}>
-            {err}
-          </div>
-        )}
-        <div className="form-group">
-          <label className="form-label">Login</label>
-          <input className="form-input" value={user} onChange={e => { setUser(e.target.value); setErr(""); }} placeholder="Digite seu login" />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Senha</label>
-          <input className="form-input" type="password" value={pass} onChange={e => { setPass(e.target.value); setErr(""); }} placeholder="••••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
-        </div>
-        <button className="btn-cyan" style={{ width: "100%", marginTop: 8, justifyContent: "center" }} onClick={handleLogin} disabled={loading}>
-          <span>{loading ? "Carregando..." : "Acessar Sistema"}</span>
+      <div className="glass login-card" role="alert">
+        <Logo size={26} />
+        <p style={{ marginTop: 24, color: "var(--text-dim)" }}>
+          Esta conta ainda não possui um perfil PosturIA autorizado. Entre em contato com a administração da clínica.
+        </p>
+        <button className="btn-outline" style={{ width: "100%", marginTop: 24, justifyContent: "center" }} onClick={handleLogout}>
+          Sair
         </button>
       </div>
     </div>
@@ -1372,7 +1219,7 @@ function RelatoriosView({ pacientes }) {
   useEffect(() => {
     if (modo === "individual" && pacienteId) {
       setLoading(true);
-      fetch(`/api/historico-postura?paciente_id=${pacienteId}`)
+      apiFetch(`/api/historico-postura?paciente_id=${pacienteId}`)
         .then(res => res.ok ? res.json() : [])
         .then(data => setHistorico(data))
         .catch(() => setHistorico([]))
@@ -1381,28 +1228,15 @@ function RelatoriosView({ pacientes }) {
   }, [modo, pacienteId]);
 
   useEffect(() => {
-    if (modo === "agregado" && pacientes.length > 0) {
-      setLoading(true);
-      Promise.all(
-        pacientes.map(pt =>
-          fetch(`/api/historico-postura?paciente_id=${pt.id}`).then(res => res.ok ? res.json() : [])
-        )
-      )
-        .then(resultados => {
-          // Agrupa por dia (registrado_em) e tira média entre pacientes
-          const porDia = {};
-          resultados.flat().forEach(reg => {
-            const dia = reg.registrado_em.split("T")[0].split(" ")[0];
-            if (!porDia[dia]) porDia[dia] = [];
-            porDia[dia].push(parseFloat(reg.percentual));
-          });
-          const dias = Object.keys(porDia).sort();
-          const medias = dias.map(d => porDia[d].reduce((a, b) => a + b, 0) / porDia[d].length);
-          setHistoricoAgregado(medias);
-        })
-        .finally(() => setLoading(false));
-    }
-  }, [modo, pacientes]);
+    if (modo !== "agregado") return;
+
+    setLoading(true);
+    apiFetch('/api/historico-postura/agregado')
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setHistoricoAgregado(data.map(reg => Number(reg.percentual)).filter(Number.isFinite)))
+      .catch(() => setHistoricoAgregado([]))
+      .finally(() => setLoading(false));
+  }, [modo]);
 
   const dadosGrafico = modo === "individual"
     ? historico.map(h => parseFloat(h.percentual))
@@ -1693,10 +1527,11 @@ function AlertasView({ medicoId }) {
 }
 
 // ─── DOCTOR DASHBOARD ─────────────────────────────────────────────
-function DoctorDash({ onLogout }) {
+function DoctorDash({ onLogout, medicoId: accountMedicoId, userName }) {
   const [selected, setSelected] = useState(null);
   const [activeNav, setActiveNav] = useState("pacientes");
-  const [chartData, setChartData] = useState([30, 45, 35, 60, 40, 55, 38]);
+  const [chartData, setChartData] = useState([]);
+  const [alertasHoje, setAlertasHoje] = useState(null);
   const [modalPaciente, setModalPaciente] = useState(false);
   const [formPaciente, setFormPaciente] = useState({ nome: "", data_nascimento: "", patologia: "" });
   const [pacientes, setPacientes] = useState([]);
@@ -1704,7 +1539,7 @@ function DoctorDash({ onLogout }) {
   const [loading, setLoading] = useState(false);
   const [medicoInfo, setMedicoInfo] = useState(null);
 
-  const medicoId = parseInt(sessionStorage.getItem("medico_id") || "1");
+  const medicoId = Number(accountMedicoId);
 
   useEffect(() => {
     // Buscar informações do médico
@@ -1735,6 +1570,10 @@ function DoctorDash({ onLogout }) {
 
     fetchMedicoInfo();
     fetchPacientes();
+    apiFetch(`/api/alertas?medico_id=${medicoId}`)
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setAlertasHoje(data.filter(a => a.criado_em && new Date(a.criado_em).toDateString() === new Date().toDateString()).length))
+      .catch(() => setAlertasHoje(null));
   }, [medicoId]);
 
   const salvarPaciente = async () => {
@@ -1772,14 +1611,26 @@ function DoctorDash({ onLogout }) {
     }
   };
 
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setChartData(prev => [...prev.slice(1), Math.floor(20 + Math.random() * 60)]);
-    }, 1800);
-    return () => clearInterval(iv);
-  }, []);
-
   const p = selected !== null ? pacientes[selected] : null;
+
+  useEffect(() => {
+    if (!p) {
+      setChartData([]);
+      return;
+    }
+
+    let cancelled = false;
+    apiFetch(`/api/historico-postura?paciente_id=${p.id}`)
+      .then(res => res.ok ? res.json() : [])
+      .then(registros => {
+        if (!cancelled) setChartData(registros.map(registro => Number(registro.percentual)));
+      })
+      .catch(() => {
+        if (!cancelled) setChartData([]);
+      });
+
+    return () => { cancelled = true; };
+  }, [p?.id]);
 
   return (
     <div className="dash-layout">
@@ -1838,12 +1689,17 @@ function DoctorDash({ onLogout }) {
                     <div className="metric-lbl">Coletes online</div>
                   </div>
                   <div className="metric-card">
-                    <div className="metric-val" style={{ color: "#ffaa00" }}>12</div>
+                    <div className="metric-val" style={{ color: "#ffaa00" }}>{alertasHoje ?? "—"}</div>
                     <div className="metric-lbl">Alertas hoje</div>
                   </div>
                   <div className="metric-card">
                     <div className="metric-val" style={{ color: "var(--cyan)" }}>
-                    {pacientes.length > 0 ? (pacientes.reduce((sum, pt) => sum + (Number(pt.postura_media_percentual) || 0), 0) / pacientes.length).toFixed(1) : 0}%
+                      {(() => {
+                        const medidos = pacientes.filter(pt => pt.postura_media_percentual !== null && pt.postura_media_percentual !== undefined);
+                        return medidos.length
+                          ? `${(medidos.reduce((sum, pt) => sum + Number(pt.postura_media_percentual), 0) / medidos.length).toFixed(1)}%`
+                          : "—";
+                      })()}
                     </div>
                     <div className="metric-lbl">Postura correta (média)</div>
                   </div>
@@ -1863,7 +1719,7 @@ function DoctorDash({ onLogout }) {
                     pacientes.map((pt, i) => (
                       <div key={i} className="patient-row" onClick={() => setSelected(i)}>
                         <div className="patient-info">
-                          <div className={`status-dot ${pt.status_conexao === 1 ? "status-online" : "status-offline"}`} />
+                          <div className={`status-dot ${pt.status_conexao === 1 ? "status-online" : pt.status_conexao === 0 ? "status-offline" : "status-unknown"}`} />
                           <div className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
                             {pt.nome.split(" ").map(w => w[0]).join("")}
                           </div>
@@ -1874,10 +1730,10 @@ function DoctorDash({ onLogout }) {
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <div style={{ fontSize: 12, color: pt.status_conexao === 1 ? "#00ff88" : "var(--text-dim)" }}>
-                            {pt.status_conexao === 1 ? "● Online" : "Offline"}
+                            {pt.status_conexao === 1 ? "● Online" : pt.status_conexao === 0 ? "Offline" : "Sem telemetria"}
                           </div>
                           <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                            Postura: {pt.postura_media_percentual}%
+                            Postura: {pt.postura_media_percentual == null ? "Sem medição" : `${pt.postura_media_percentual}%`}
                           </div>
                         </div>
                       </div>
@@ -1906,21 +1762,23 @@ function DoctorDash({ onLogout }) {
                   </div>
                   <div className="metric-card">
                     <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Status do Colete</div>
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: p.status_conexao === 1 ? "#00ff88" : "#ff6677" }}>
-                      {p.status_conexao === 1 ? "● Online" : "Offline"}
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: p.status_conexao === 1 ? "#00ff88" : p.status_conexao === 0 ? "#ff6677" : "var(--text-dim)" }}>
+                      {p.status_conexao === 1 ? "● Online" : p.status_conexao === 0 ? "Offline" : "Sem telemetria"}
                     </div>
                   </div>
                   <div className="metric-card">
                     <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Postura Média</div>
                     <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>
-                      {p.postura_media_percentual}%
+                      {p.postura_media_percentual == null ? "Sem medição" : `${p.postura_media_percentual}%`}
                     </div>
                   </div>
                 </div>
 
                 <div className="glass graph-wrap" style={{ marginBottom: 20 }}>
                   <div className="graph-title">HISTÓRICO DE VARIAÇÃO POSTURAL — ÚLTIMA HORA</div>
-                  <MiniChart data={chartData} />
+                  {chartData.length > 0
+                    ? <MiniChart data={chartData} />
+                    : <p style={{ color: "var(--text-dim)", textAlign: "center", padding: 32 }}>Nenhuma medição real registrada para este paciente.</p>}
                 </div>
               </>
             )
@@ -1983,62 +1841,35 @@ function DoctorDash({ onLogout }) {
 
  // ─── VISÃO GERAL VIEW (CLÍNICA) ─────────────────────────────────────
 function VisaoGeralView({ medicos }) {
-  const totalPacientes = medicos.reduce((sum, m) => sum + (m.pacientes ? m.pacientes.length : 0), 0);
-  const totalOnline = medicos.reduce((sum, m) => sum + (m.pacientes ? m.pacientes.filter(p => p.status_conexao === 1).length : 0), 0);
-  const todosOsPacientes = medicos.flatMap(m => m.pacientes || []);
-  
-  // ✅ CORREÇÃO 1: Evita divisão por zero e checa se o valor final é um número válido (Fallback: 82.0%)
-  const calculoAderencia = todosOsPacientes.length > 0
-    ? (todosOsPacientes.reduce((sum, p) => sum + (p.postura_media_percentual || 0), 0) / todosOsPacientes.length)
-    : 0;
-  
-  const aderenciaMedia = isNaN(calculoAderencia) || calculoAderencia === 0 ? "82.0" : calculoAderencia.toFixed(1);
+  const pacientes = medicos.flatMap(m => m.pacientes || []);
+  const medidos = pacientes
+    .filter(p => p.postura_media_percentual !== null && p.postura_media_percentual !== undefined)
+    .map(p => Number(p.postura_media_percentual));
+  const media = medidos.length ? (medidos.reduce((sum, value) => sum + value, 0) / medidos.length).toFixed(1) : null;
+  const totalOnline = pacientes.filter(p => p.status_conexao === 1).length;
 
   return (
     <>
       <div className="metrics-row">
-        <div className="metric-card">
-          <div className="metric-val" style={{ color: "var(--cyan)" }}>{medicos.length}</div>
-          <div className="metric-lbl">Médicos ativos</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-val" style={{ color: "#00ff88" }}>{totalPacientes}</div>
-          <div className="metric-lbl">Pacientes totais</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-val" style={{ color: "#00ff88" }}>{totalOnline}</div>
-          <div className="metric-lbl">Coletes online</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-val" style={{ color: "var(--cyan)" }}>{aderenciaMedia}%</div>
-          <div className="metric-lbl">Aderência média</div>
-        </div>
+        <div className="metric-card"><div className="metric-val" style={{ color: "var(--cyan)" }}>{medicos.length}</div><div className="metric-lbl">Médicos ativos</div></div>
+        <div className="metric-card"><div className="metric-val" style={{ color: "#00ff88" }}>{pacientes.length}</div><div className="metric-lbl">Pacientes totais</div></div>
+        <div className="metric-card"><div className="metric-val" style={{ color: "#00ff88" }}>{totalOnline}</div><div className="metric-lbl">Coletes online</div></div>
+        <div className="metric-card"><div className="metric-val" style={{ color: "var(--cyan)" }}>{media === null ? "—" : `${media}%`}</div><div className="metric-lbl">Média das medições registradas</div></div>
       </div>
 
       <div style={{ fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: 2, color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 16 }}>
         Resumo por Médico
       </div>
       <div className="patient-list">
-        {medicos.length > 0 ? (
-          medicos.map((doc, i) => (
-            <div key={i} className="patient-row" style={{ cursor: "default" }}>
-              <div className="patient-info">
-                <div className="avatar">{doc.nome.split(" ").slice(0, 2).map(w => w[0]).join("")}</div>
-                <div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{doc.nome}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{doc.area}</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
-                {doc.pacientes ? doc.pacientes.length : 0} paciente{doc.pacientes && doc.pacientes.length !== 1 ? "s" : ""}
-              </div>
+        {medicos.length > 0 ? medicos.map((doc, i) => (
+          <div key={i} className="patient-row" style={{ cursor: "default" }}>
+            <div className="patient-info">
+              <div className="avatar">{doc.nome.split(" ").slice(0, 2).map(w => w[0]).join("")}</div>
+              <div><div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{doc.nome}</div><div style={{ fontSize: 12, color: "var(--text-dim)" }}>{doc.area}</div></div>
             </div>
-          ))
-        ) : (
-          <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-dim)" }}>
-            Nenhum médico cadastrado ainda.
+            <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{doc.pacientes ? doc.pacientes.length : 0} paciente{doc.pacientes && doc.pacientes.length !== 1 ? "s" : ""}</div>
           </div>
-        )}
+        )) : <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-dim)" }}>Nenhum médico cadastrado ainda.</div>}
       </div>
     </>
   );
@@ -2080,7 +1911,7 @@ function PacientesClinicaView({ medicos }) {
           pacientesFiltrados.map((pt, i) => (
             <div key={i} className="patient-row" style={{ cursor: "default" }}>
               <div className="patient-info">
-                <div className={`status-dot ${pt.status_conexao === 1 ? "status-online" : "status-offline"}`} />
+                <div className={`status-dot ${pt.status_conexao === 1 ? "status-online" : pt.status_conexao === 0 ? "status-offline" : "status-unknown"}`} />
                 <div className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
                   {pt.nome.split(" ").map(w => w[0]).join("")}
                 </div>
@@ -2091,11 +1922,11 @@ function PacientesClinicaView({ medicos }) {
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: 12, color: pt.status_conexao === 1 ? "#00ff88" : "var(--text-dim)" }}>
-                  {pt.status_conexao === 1 ? "● Online" : "Offline"}
+                  {pt.status_conexao === 1 ? "● Online" : pt.status_conexao === 0 ? "Offline" : "Sem telemetria"}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
                   {/* ✅ PREVENÇÃO: Garante valor limpo caso o percentual do paciente seja nulo */}
-                  Postura: {pt.postura_media_percentual || 82}%
+                  Postura: {pt.postura_media_percentual == null ? "Sem medição" : `${pt.postura_media_percentual}%`}
                 </div>
               </div>
             </div>
@@ -2112,91 +1943,53 @@ function PacientesClinicaView({ medicos }) {
 
 // ─── MÉTRICAS VIEW (CLÍNICA) ────────────────────────────────────────
 function MetricasView({ medicos }) {
-  const todosOsPacientes = medicos.flatMap(m => m.pacientes || []);
-  
-  const calcMediaGeral = todosOsPacientes.length > 0
-    ? todosOsPacientes.reduce((sum, p) => sum + (p.postura_media_percentual || 0), 0) / todosOsPacientes.length
-    : 0;
-  
-  // ✅ CORREÇÃO 2: Trata a média da clínica para nunca exibir NaN%
-  const mediaGeralExibida = isNaN(calcMediaGeral) || calcMediaGeral === 0 ? "82.0" : calcMediaGeral.toFixed(1);
-
   const comparativo = medicos.map(m => {
     const pacientes = m.pacientes || [];
-    const media = pacientes.length > 0
-      ? pacientes.reduce((sum, p) => sum + (p.postura_media_percentual || 0), 0) / pacientes.length
-      : 0;
-    
-    // ✅ CORREÇÃO 3: Se o médico for novo/não tiver notas reais de pacientes, aplica os 82% padrão do design
-    const safeAderencia = isNaN(media) || media === 0 ? 82.0 : media;
-
+    const medidos = pacientes
+      .filter(p => p.postura_media_percentual !== null && p.postura_media_percentual !== undefined)
+      .map(p => Number(p.postura_media_percentual));
     return {
       nome: m.nome,
       area: m.area,
       qtdPacientes: pacientes.length,
-      aderencia: safeAderencia,
+      aderencia: medidos.length ? medidos.reduce((sum, value) => sum + value, 0) / medidos.length : null,
     };
-  }).sort((a, b) => b.aderencia - a.aderencia);
-
-  // ✅ CORREÇÃO 4: Se não houver múltiplos médicos com notas distintas, injetamos uma linha de histórico bonita
-  const dadosReaisGrafico = comparativo.map(c => c.aderencia);
-  const dadosGrafico = dadosReaisGrafico.length > 1 && !dadosReaisGrafico.every(v => v === 82)
-    ? dadosReaisGrafico 
-    : [78, 81, 80, 84, 82, 85, 82]; // Curva de evolução padrão da clínica (Estilo Lucas)
+  }).sort((a, b) => (b.aderencia ?? -1) - (a.aderencia ?? -1));
+  const medias = comparativo.map(c => c.aderencia).filter(value => value !== null);
+  const mediaGeral = medias.length ? (medias.reduce((sum, value) => sum + value, 0) / medias.length).toFixed(1) : null;
+  const dadosGrafico = comparativo.map(c => c.aderencia).filter(value => value !== null);
 
   return (
     <>
       <div className="glass graph-wrap" style={{ marginBottom: 24 }}>
-        <div className="graph-title">ADERÊNCIA MÉDIA POR MÉDICO — VISÃO GERAL DA CLÍNICA</div>
-        
-        {/* ✅ REMOVIDA A TRAVA: Agora o MiniChart renderiza direto com os dados reais ou simulados */}
-        <MiniChart data={dadosGrafico} />
-        
+        <div className="graph-title">MEDIÇÕES POSTURAIS REGISTRADAS POR MÉDICO</div>
+        {dadosGrafico.length >= 2
+          ? <MiniChart data={dadosGrafico} />
+          : <p style={{ color: "var(--text-dim)", textAlign: "center", padding: 24 }}>Dados reais insuficientes para gerar um gráfico comparativo.</p>}
         <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>
-          Média geral da clínica: <span style={{ color: "var(--cyan)", fontFamily: "var(--font-display)" }}>{mediaGeralExibida}%</span>
+          Média das medições registradas: <span style={{ color: "var(--cyan)", fontFamily: "var(--font-display)" }}>{mediaGeral === null ? "—" : `${mediaGeral}%`}</span>
         </div>
       </div>
-
-      <div style={{ fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: 2, color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 16 }}>
-        Comparativo entre Médicos
-      </div>
-
+      <div style={{ fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: 2, color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 16 }}>Comparativo entre Médicos</div>
       <div className="patient-list">
-        {comparativo.length > 0 ? (
-          comparativo.map((c, i) => (
-            <div key={i} className="patient-row" style={{ cursor: "default" }}>
-              <div className="patient-info">
-                <div className="avatar">{c.nome.split(" ").slice(0, 2).map(w => w[0]).join("")}</div>
-                <div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{c.nome}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{c.area} • {c.qtdPacientes} paciente{c.qtdPacientes !== 1 ? "s" : ""}</div>
-                </div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--cyan)" }}>
-                  {c.aderencia.toFixed(1)}%
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text-dim)" }}>aderência média</div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-dim)" }}>
-            Nenhum médico cadastrado ainda.
+        {comparativo.length > 0 ? comparativo.map((c, i) => (
+          <div key={i} className="patient-row" style={{ cursor: "default" }}>
+            <div className="patient-info"><div className="avatar">{c.nome.split(" ").slice(0, 2).map(w => w[0]).join("")}</div><div><div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{c.nome}</div><div style={{ fontSize: 12, color: "var(--text-dim)" }}>{c.area} • {c.qtdPacientes} paciente{c.qtdPacientes !== 1 ? "s" : ""}</div></div></div>
+            <div style={{ textAlign: "right" }}><div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--cyan)" }}>{c.aderencia === null ? "Sem medições" : `${c.aderencia.toFixed(1)}%`}</div><div style={{ fontSize: 11, color: "var(--text-dim)" }}>média registrada</div></div>
           </div>
-        )}
+        )) : <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-dim)" }}>Nenhum médico cadastrado ainda.</div>}
       </div>
     </>
   );
 }
 
 // ─── CLINIC DASHBOARD ─────────────────────────────────────────────
-function ClinicDash({ onLogout }) {
+function ClinicDash({ onLogout, clinicName }) {
   const [selDoc, setSelDoc] = useState(null);
   const [activeNav, setActiveNav] = useState("visao-geral");
   const [medicos, setMedicos] = useState([]);
   const [modalMedico, setModalMedico] = useState(false);
-  const [formMedico, setFormMedico] = useState({ nome: "", data_nascimento: "", area: "" });
+  const [formMedico, setFormMedico] = useState({ nome: "", data_nascimento: "", registro_profissional: "", area: "" });
   const [msgMedico, setMsgMedico] = useState("");
   const [loading, setLoading] = useState(false);
  
@@ -2215,51 +2008,39 @@ function ClinicDash({ onLogout }) {
     fetchMedicos();
   }, []);
  
-    const salvarMedico = async () => {
-    if (!formMedico.nome || !formMedico.data_nascimento || !formMedico.area) {
+  const salvarMedico = async () => {
+    if (!formMedico.nome || !formMedico.data_nascimento || !formMedico.registro_profissional || !formMedico.area) {
       setMsgMedico("Erro: Preencha todos os campos.");
       return;
     }
- 
+
     const area = formMedico.area.toLowerCase().trim();
     if (area !== "fisioterapeuta" && area !== "ortopedista") {
-      setMsgMedico("Erro: Inválido. Aceite apenas 'fisioterapeuta' ou 'ortopedista'.");
+      setMsgMedico("Erro: informe fisioterapeuta ou ortopedista.");
       return;
     }
- 
-    // GERAÇÃO AUTOMÁTICA BASEADA NA ÁREA
-    let registroGerado = "";
-    const numAleatorio = Math.floor(100000 + Math.random() * 900000); // 6 dígitos
- 
-    if (area === "fisioterapeuta") {
-      // Padrão CREFITO (ex: 123456-F)
-      registroGerado = `${numAleatorio}-F`;
-    } else {
-      // Padrão CRM (ex: 123456-SP)
-      registroGerado = `${numAleatorio}-SP`;
-    }
- 
+
     setLoading(true);
     try {
-      const res = await fetch("/api/medicos", {
+      const res = await apiFetch("/api/medicos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome: formMedico.nome,
           data_nascimento: formMedico.data_nascimento,
-          area: area,
-          crm: registroGerado, // Enviando o registro correto conforme a área
+          registro_profissional: formMedico.registro_profissional.trim(),
+          area,
         }),
       });
-      
+
       if (res.ok) {
         const newMedico = await res.json();
-        setMedicos([...medicos, newMedico]);
+        setMedicos(prev => [...prev, newMedico]);
         setMsgMedico("Médico cadastrado com sucesso!");
-        setFormMedico({ nome: "", data_nascimento: "", area: "" });
-        setTimeout(() => { 
-          setModalMedico(false); 
-          setMsgMedico(""); 
+        setFormMedico({ nome: "", data_nascimento: "", registro_profissional: "", area: "" });
+        setTimeout(() => {
+          setModalMedico(false);
+          setMsgMedico("");
         }, 1500);
       } else {
         const err = await res.json();
@@ -2271,9 +2052,15 @@ function ClinicDash({ onLogout }) {
       setLoading(false);
     }
   };
- 
- 
+
   const d = selDoc !== null ? medicos[selDoc] : null;
+  const pacientesClinica = medicos.flatMap(m => m.pacientes || []);
+  const medidasClinica = pacientesClinica
+    .filter(p => p.postura_media_percentual !== null && p.postura_media_percentual !== undefined)
+    .map(p => Number(p.postura_media_percentual));
+  const mediaClinica = medidasClinica.length
+    ? `${(medidasClinica.reduce((sum, value) => sum + value, 0) / medidasClinica.length).toFixed(1)}%`
+    : "—";
  
   return (
     <div className="dash-layout">
@@ -2304,7 +2091,7 @@ function ClinicDash({ onLogout }) {
             <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700 }}>
               {d ? d.nome : "Painel da Clínica"}
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-dim)" }}>Centro de Reabilitação PosturIA</div>
+            <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{clinicName || "Clínica"}</div>
           </div>
         </div>
  
@@ -2332,7 +2119,7 @@ function ClinicDash({ onLogout }) {
                     <div className="metric-lbl">Coletes online</div>
                   </div>
                   <div className="metric-card">
-                    <div className="metric-val" style={{ color: "var(--cyan)" }}>82%</div>
+                    <div className="metric-val" style={{ color: "var(--cyan)" }}>{mediaClinica}</div>
                     <div className="metric-lbl">Aderência média</div>
                   </div>
                 </div>
@@ -2354,7 +2141,7 @@ function ClinicDash({ onLogout }) {
                           <div className="avatar">{doc.nome.split(" ").slice(0, 2).map(w => w[0]).join("")}</div>
                           <div>
                             <div style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>{doc.nome}</div>
-                            <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{doc.area} — {doc.crm}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{doc.area} — {doc.registro_profissional}</div>
                           </div>
                         </div>
                         <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
@@ -2381,7 +2168,7 @@ function ClinicDash({ onLogout }) {
                   </div>
                   <div className="metric-card">
                     <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>Registro</div>
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>{d.crm}</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text)" }}>{d.registro_profissional}</div>
                   </div>
                 </div>
  
@@ -2393,7 +2180,7 @@ function ClinicDash({ onLogout }) {
                     d.pacientes.map((pt, pi) => (
                       <div key={pi} className="patient-row" style={{ cursor: "default" }}>
                         <div className="patient-info">
-                          <div className={`status-dot ${pt.status_conexao === 1 ? "status-online" : "status-offline"}`} />
+                          <div className={`status-dot ${pt.status_conexao === 1 ? "status-online" : pt.status_conexao === 0 ? "status-offline" : "status-unknown"}`} />
                           <div className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
                             {pt.nome.split(" ").map(w => w[0]).join("")}
                           </div>
@@ -2404,10 +2191,10 @@ function ClinicDash({ onLogout }) {
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <div style={{ fontSize: 12, color: pt.status_conexao === 1 ? "#00ff88" : "var(--text-dim)" }}>
-                            {pt.status_conexao === 1 ? "● Online" : "Offline"}
+                            {pt.status_conexao === 1 ? "● Online" : pt.status_conexao === 0 ? "Offline" : "Sem telemetria"}
                           </div>
                           <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                            Postura: {pt.postura_media_percentual}%
+                            Postura: {pt.postura_media_percentual == null ? "Sem medição" : `${pt.postura_media_percentual}%`}
                           </div>
                         </div>
                       </div>
@@ -2437,6 +2224,7 @@ function ClinicDash({ onLogout }) {
             {[
               { key: "nome", label: "Nome Completo" },
               { key: "data_nascimento", label: "Data de Nascimento" },
+              { key: "registro_profissional", label: "Registro profissional (CRM/CREFITO)" },
               { key: "area", label: "Área (fisioterapeuta ou ortopedista)" },
             ].map(f => (
               <div key={f.key} className="form-group" style={{ marginBottom: 16 }}>
@@ -2475,4 +2263,3 @@ function ClinicDash({ onLogout }) {
     </div>
   );
 }
- 

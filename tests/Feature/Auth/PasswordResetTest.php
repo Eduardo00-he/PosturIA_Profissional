@@ -59,8 +59,8 @@ class PasswordResetTest extends TestCase
             $response = $this->post('/reset-password', [
                 'token' => $notification->token,
                 'email' => $user->email,
-                'password' => 'password',
-                'password_confirmation' => 'password',
+                'password' => 'new-password',
+                'password_confirmation' => 'new-password',
             ]);
 
             $response
@@ -69,5 +69,22 @@ class PasswordResetTest extends TestCase
 
             return true;
         });
+    }
+
+    public function test_reset_rejects_password_shorter_than_twelve_characters(): void
+    {
+        $user = User::factory()->create();
+        $token = \Illuminate\Support\Facades\Password::createToken($user);
+
+        $this->from('/reset-password/'.$token)
+            ->post('/reset-password', [
+                'token' => $token,
+                'email' => $user->email,
+                'password' => 'too-short',
+                'password_confirmation' => 'too-short',
+            ])
+            ->assertSessionHasErrors('password');
+
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('password', $user->refresh()->password));
     }
 }

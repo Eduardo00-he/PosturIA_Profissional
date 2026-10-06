@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { router } from "@inertiajs/react";
+import { router, useForm } from "@inertiajs/react";
 
 // ─── Global Styles ───────────────────────────────────────────────
 const globalStyles = `
@@ -923,12 +923,14 @@ function Logo({ size = 22 }) {
 
 // ─── Mini chart SVG ───────────────────────────────────────────────
 function MiniChart({ color = "var(--cyan)", data = [] }) {
-  const pts = data.length ? data : [30, 45, 35, 60, 40, 55, 38, 65, 42, 58];
+  const pts = Array.isArray(data) ? data.map(Number).filter(Number.isFinite) : [];
+  if (pts.length === 0) return <div className="graph-svg" aria-label="Sem medições disponíveis" />;
   const max = Math.max(...pts), min = Math.min(...pts);
+  const range = max - min || 1;
   const w = 100, h = 50;
   const points = pts.map((v, i) => {
-    const x = (i / (pts.length - 1)) * w;
-    const y = h - ((v - min) / (max - min)) * h * 0.8 - h * 0.1;
+    const x = pts.length === 1 ? w / 2 : (i / (pts.length - 1)) * w;
+    const y = h - ((v - min) / range) * h * 0.8 - h * 0.1;
     return `${x},${y}`;
   }).join(" ");
   return (
@@ -948,11 +950,11 @@ function NavBar({ page, setPage }) {
     return () => window.removeEventListener("scroll", fn);
   }, []);
   const links = [
-    { label: "Início", id: "home" },
-    { label: "Solução", id: "solution" },
-    { label: "Tecnologia", id: "tech" },
-    { label: "Contato", id: "contact" },
-    { label: "Planos", id: "shop" },
+    { label: "Início", target: "home", page: "home" },
+    { label: "Solução", target: "solution", page: "home" },
+    { label: "Tecnologia", target: "tech", page: "home" },
+    { label: "Contato", target: null, page: "contact" },
+    { label: "Planos", target: null, page: "shop" },
   ];
   return (
     <nav className={`navbar${scrolled ? " scrolled" : ""}`}>
@@ -962,8 +964,17 @@ function NavBar({ page, setPage }) {
         </button>
         <ul className={`nav-links${open ? " open" : ""}`}>
           {links.map(l => (
-            <li key={l.id}>
-              <a href="#" onClick={e => { e.preventDefault(); setPage(l.id); setOpen(false); }}>
+            <li key={l.label}>
+              <a href={l.target ? `#${l.target}` : `/${l.page}`} onClick={e => {
+                e.preventDefault();
+                setOpen(false);
+                if (l.target) {
+                  setPage("home");
+                  setTimeout(() => document.getElementById(l.target)?.scrollIntoView({ behavior: "smooth" }), 0);
+                } else {
+                  setPage(l.page);
+                }
+              }}>
                 {l.label}
               </a>
             </li>
@@ -988,37 +999,25 @@ function HomePage({ setPage }) {
   const [faqOpen, setFaqOpen] = useState(null);
 
   const problems = [
-    { icon: "🦴", title: "Escoliose", text: "Curvatura anormal da coluna que afeta postura e qualidade de vida, especialmente em jovens durante o crescimento." },
-    { icon: "🪑", title: "Má Postura em Escritório", text: "Horas em frente ao computador causam tensão cervical, dores lombares e síndrome do ombro cruzado." },
-    { icon: "📚", title: "Problemas em Estudantes", text: "Mochila pesada e longas horas de estudo criam padrões posturais inadequados desde a adolescência." },
-    { icon: "💢", title: "Hipercifose", text: "Curvatura excessiva da coluna torácica, causando a clássica 'corcunda', dores musculares e fadiga." },
-    { icon: "⚡", title: "Hérnia de Disco", text: "Pressão inadequada sobre os discos intervertebrais leva a compressão nervosa e dor irradiante." },
-    { icon: "😰", title: "Dores Lombares Crônicas", text: "A principal causa de afastamento do trabalho no Brasil. Afeta 80% das pessoas em algum momento da vida." },
+    { icon: "🦴", title: "Escoliose", text: "Alterações da coluna exigem avaliação individual por profissional de saúde; esta página não faz diagnóstico." },
+    { icon: "🪑", title: "Má Postura em Escritório", text: "Longos períodos na mesma posição podem gerar desconforto. Pausas e orientação ergonômica variam para cada pessoa." },
+    { icon: "📚", title: "Ergonomia no Estudo", text: "A ergonomia no estudo depende de fatores individuais e do ambiente; procure orientação profissional quando houver desconforto." },
+    { icon: "💢", title: "Hipercifose", text: "Alterações na curvatura torácica devem ser avaliadas por profissional; não podem ser identificadas por esta página." },
+    { icon: "⚡", title: "Hérnia de Disco", text: "Sintomas relacionados aos discos vertebrais requerem avaliação clínica; o PosturIA não diagnostica condições médicas." },
+    { icon: "😰", title: "Dores Lombares Crônicas", text: "Dores lombares podem afetar a rotina. Procure um profissional de saúde para avaliação e orientação individual." },
   ];
 
   const techs = [
-    { icon: "🔌", name: "ESP32" }, { icon: "📡", name: "IoT" },
-    { icon: "🧠", name: "Machine Learning" }, { icon: "📊", name: "Dashboard" },
-    { icon: "📶", name: "Bluetooth" }, { icon: "🌐", name: "Wi-Fi" },
-    { icon: "⚙️", name: "MPU6050" }, { icon: "🔋", name: "Li-ion" },
-    { icon: "🤖", name: "IA" }, { icon: "📱", name: "MQTT" },
+    { icon: "⚙️", name: "Laravel" }, { icon: "⚛️", name: "React" },
+    { icon: "↗", name: "Inertia" }, { icon: "🗄️", name: "MySQL" },
+    { icon: "⚡", name: "Vite" }, { icon: "🔐", name: "Sessão + CSRF" },
   ];
 
   const faqs = [
-    { q: "Como funciona o monitoramento em tempo real?", a: "Os sensores IMU do colete capturam dados a cada 100ms, processados pelo ESP32 e enviados via MQTT para o dashboard clínico. O médico visualiza a angulação da coluna ao vivo." },
-    { q: "O colete é confortável para uso prolongado?", a: "Sim. O design ergonômico utiliza tecido respirável e os componentes eletrônicos são distribuídos para não interferir nos movimentos naturais do usuário." },
-    { q: "Médicos e fisioterapeutas podem acompanhar remotamente?", a: "Absolutamente. O dashboard web permite acesso de qualquer dispositivo com internet, com alertas em tempo real quando o paciente apresenta postura inadequada." },
-    { q: "Qual a duração da bateria?", a: "A bateria Li-ion integrada oferece até 12 horas de monitoramento contínuo, com carregamento via USB-C em aproximadamente 2 horas." },
+    { q: "Como funciona o PosturIA?", a: "O PosturIA é um projeto em desenvolvimento. O conceito prevê um colete e uma plataforma web; funcionamento e disponibilidade dependem de integração e validação." },
+    { q: "O sistema substitui uma avaliação de saúde?", a: "Não. O projeto ainda não está disponível para uso clínico; se e quando disponibilizado, não substituirá avaliação, diagnóstico ou orientação profissional." },
+    { q: "Quais são as especificações do colete?", a: "Autonomia, frequência de leitura e compatibilidade serão informadas para cada versão após validação técnica do produto." },
   ];
-
-  // Generate real-time-looking chart data
-  const [chartData, setChartData] = useState([30, 45, 35, 60, 40, 55, 38, 65, 42, 58]);
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setChartData(prev => [...prev.slice(1), Math.floor(30 + Math.random() * 40)]);
-    }, 1500);
-    return () => clearInterval(iv);
-  }, []);
 
   return (
     <>
@@ -1026,18 +1025,18 @@ function HomePage({ setPage }) {
       <section className="hero grid-bg" id="home">
         <div className="container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 40, width: "100%" }}>
           <div className="hero-content">
-            <div className="label">Saúde 4.0 — Inovação Médica</div>
+            <div className="label">Projeto em desenvolvimento</div>
             <h1 className="hero-title">
-              O Futuro da<br />
-              <span className="glow">Reabilitação</span><br />
+              Tecnologia para<br />
+              <span className="glow">Acompanhamento</span><br />
               Postural
             </h1>
             <p className="hero-sub">
-              Colete inteligente com IA que monitora, corrige e previne problemas posturais em tempo real. Conectando pacientes e profissionais de saúde.
+              Projeto de tecnologia vestível em desenvolvimento. O protótipo prevê sensores e feedback háptico; funcionamento e disponibilidade dependem de validação do hardware e da integração.
             </p>
             <div className="hero-btns">
               <button className="btn-cyan" onClick={() => setPage("shop")}>
-                <span>Adquirir Colete</span>
+                <span>Ver referências de pacote</span>
               </button>
               <button className="btn-outline" onClick={() => setPage("login")}>
                 Área Profissional
@@ -1045,9 +1044,9 @@ function HomePage({ setPage }) {
             </div>
             <div className="stats-row">
               {[
-                { n: "10M+", l: "Brasileiros com dores na coluna" },
-                { n: "94%", l: "Precisão da IA" },
-                { n: "Real-time", l: "Monitoramento" },
+                { n: "Sensores IMU", l: "Previstos no conceito" },
+                { n: "Feedback háptico", l: "Em validação" },
+                { n: "Painel web", l: "Sem telemetria do colete" },
               ].map(s => (
                 <div key={s.l} className="stat-chip glass">
                   <div className="stat-num">{s.n}</div>
@@ -1075,13 +1074,13 @@ function HomePage({ setPage }) {
             </div>
             {/* Data nodes */}
             <div className="data-node" style={{ top: 40, right: 0, animationDelay: "0s" }}>
-              Cervical: 12°
+              Sensores previstos
             </div>
             <div className="data-node" style={{ bottom: 80, left: -10, animationDelay: "1s" }}>
-              Lombar: 28°
+              Feedback em validação
             </div>
             <div className="data-node" style={{ bottom: 20, right: 10, animationDelay: "0.5s" }}>
-              IA Active ●
+              Painel demonstrativo
             </div>
           </div>
         </div>
@@ -1093,7 +1092,7 @@ function HomePage({ setPage }) {
           <div className="label">Identificação do Problema</div>
           <h2 className="title">Por que a postura importa<br /><span className="glow">mais do que você pensa?</span></h2>
           <p style={{ color: "var(--text-dim)", maxWidth: 560 }}>
-            Sem monitoramento contínuo, posturas inadequadas se repetem fora do ambiente clínico — aumentando lesões, custos e sofrimento.
+            Ergonomia e postura são temas individuais. O PosturIA não diagnostica condições nem substitui avaliação ou orientação profissional.
           </p>
           <div className="problem-grid">
             {problems.map(p => (
@@ -1110,14 +1109,14 @@ function HomePage({ setPage }) {
       {/* HOW IT WORKS */}
       <section className="section grid-bg" id="solution">
         <div className="container">
-          <div className="label">A Solução PosturIA</div>
-          <h2 className="title">Como o sistema <span className="glow">funciona</span></h2>
+          <div className="label">Conceito do projeto</div>
+          <h2 className="title">Como a solução foi <span className="glow">pensada</span></h2>
           <div className="steps">
             {[
-              { n: "01", title: "Usuário veste o colete", text: "O colete PosturIA é colocado sobre a roupa. Os sensores IMU se posicionam nos pontos-chave da coluna." },
-              { n: "02", title: "Sensores detectam postura", text: "MPU6050/9250 capturam aceleração e giroscópio a 100Hz. A IA classifica a postura em tempo real." },
-              { n: "03", title: "Feedback háptico imediato", text: "Motores vibratórios alertam o usuário sutilmente quando detectam postura inadequada, criando memória muscular." },
-              { n: "04", title: "Dashboard clínico ao vivo", text: "Médicos e fisioterapeutas acompanham angulação, histórico e relatórios pelo painel web remoto." },
+              { n: "01", title: "Conceito de uso do colete", text: "O colete é posicionado conforme as instruções da versão do produto; a colocação e o uso devem ser validados antes da venda." },
+              { n: "02", title: "Sensores em avaliação", text: "O conceito prevê sensores IMU; leitura real, especificações e limites dependem da integração e validação do hardware." },
+              { n: "03", title: "Feedback previsto — em validação", text: "O feedback háptico é uma hipótese do conceito; funcionamento, regras, alertas e eficácia ainda não foram validados." },
+              { n: "04", title: "Painel profissional — sem telemetria ao vivo", text: "O painel web organiza informações para profissionais; o recebimento de medições depende de integração e validação do colete." },
             ].map(s => (
               <div key={s.n} className="glass step-card">
                 <div className="step-num">{s.n}</div>
@@ -1132,8 +1131,8 @@ function HomePage({ setPage }) {
       {/* TECH */}
       <section className="section" id="tech">
         <div className="container">
-          <div className="label">Stack Tecnológico</div>
-          <h2 className="title">Tecnologias que fazem<br /><span className="glow">a diferença</span></h2>
+          <div className="label">Plataforma web</div>
+          <h2 className="title">Tecnologias atualmente<br /><span className="glow">no repositório</span></h2>
           <div className="tech-grid">
             {techs.map(t => (
               <div key={t.name} className="tech-chip">
@@ -1142,91 +1141,17 @@ function HomePage({ setPage }) {
               </div>
             ))}
           </div>
+          <p style={{ color: "var(--text-dim)", maxWidth: 620, marginTop: 24 }}>Firmware, sensores, conectividade e integração com o colete não estão implementados nesta versão web e serão publicados após validação.</p>
         </div>
       </section>
 
-      {/* REALTIME DEMO */}
+      {/* DEMONSTRAÇÃO */}
       <section className="section grid-bg">
         <div className="container">
-          <div className="label">Demonstração ao Vivo</div>
-          <h2 className="title">Monitoramento em <span className="glow">tempo real</span></h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, marginTop: 48 }}>
-            <div className="glass" style={{ padding: 28 }}>
-              <div className="graph-title">ANGULAÇÃO CERVICAL — AO VIVO</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <span style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 900, color: "var(--cyan)" }}>
-                  {chartData[chartData.length - 1]}°
-                </span>
-                <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Angulação atual</span>
-              </div>
-              <MiniChart data={chartData} />
-            </div>
-            <div className="glass" style={{ padding: 28 }}>
-              <div className="graph-title">STATUS DO COLETE</div>
-              <div className="angle-bar">
-                {[
-                  { name: "Cervical", val: chartData[chartData.length - 1], max: 90, color: chartData[chartData.length - 1] > 45 ? "#ff4455" : "var(--cyan)" },
-                  { name: "Dorsal", val: 34, max: 90, color: "var(--cyan)" },
-                  { name: "Lombar", val: 58, max: 90, color: "#ffaa00" },
-                ].map(a => (
-                  <div key={a.name} className="angle-row">
-                    <span className="angle-name">{a.name}</span>
-                    <div className="angle-track">
-                      <div className="angle-fill" style={{ width: `${(a.val / a.max) * 100}%`, background: a.color }} />
-                    </div>
-                    <span className="angle-val" style={{ color: a.color }}>{a.val}°</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="glass" style={{ padding: 28 }}>
-              <div className="graph-title">INDICADORES POSTURAIS</div>
-              {[
-                { label: "Postura Correta", val: "73%", ok: true },
-                { label: "Alertas hoje", val: "12", ok: true },
-                { label: "Postura Incorreta", val: "27%", ok: false },
-                { label: "Tempo com colete", val: "4h32m", ok: true },
-              ].map(i => (
-                <div key={i.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                  <span style={{ fontSize: 13, color: "var(--text-dim)" }}>{i.label}</span>
-                  <span style={{ fontFamily: "var(--font-display)", fontSize: 14, color: i.ok ? "var(--cyan)" : "#ff6677" }}>{i.val}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="section">
-        <div className="container">
-          <div className="label">Especialistas</div>
-          <h2 className="title">O que os profissionais<br /><span className="glow">dizem</span></h2>
-          <div className="testimonials-grid">
-            <div className="glass testimonial-card">
-              <p className="testimonial-text">
-                "O PosturIA representa um avanço significativo na ortopedia preventiva. A capacidade de monitoramento contínuo e feedback imediato resolve um problema crítico: o paciente corrige a postura apenas durante a consulta. Com este dispositivo, a correção ocorre 24 horas por dia, acelerando a reabilitação e prevenindo progressão de lesões como hérnias e escoliose."
-              </p>
-              <div className="testimonial-author">
-                <div className="avatar">DR</div>
-                <div>
-                  <div className="author-name">Dr. Rodrigo Almeida</div>
-                  <div className="author-role">Ortopedista — CRM 58432</div>
-                </div>
-              </div>
-            </div>
-            <div className="glass testimonial-card">
-              <p className="testimonial-text">
-                "Na fisioterapia, o maior desafio é garantir que o paciente mantenha os exercícios e a postura correta entre as sessões. O PosturIA transforma isso: posso acompanhar remotamente o comportamento postural em tempo real, ajustar o protocolo de tratamento com dados reais e engajar o paciente de forma ativa em sua própria reabilitação. Tecnologia transformadora."
-              </p>
-              <div className="testimonial-author">
-                <div className="avatar">MC</div>
-                <div>
-                  <div className="author-name">Dra. Marina Carvalho</div>
-                  <div className="author-role">Fisioterapeuta — CREFITO 24891</div>
-                </div>
-              </div>
-            </div>
+          <div className="label">Plataforma profissional</div>
+          <h2 className="title">Sem dados clínicos ou <span className="glow">telemetria ativa</span></h2>
+          <div className="glass" style={{ padding: 28, marginTop: 32, color: "var(--text-dim)" }}>
+            As medições e os gráficos serão exibidos após a conexão validada do colete. Esta página não apresenta dados de pacientes nem resultados clínicos de demonstração.
           </div>
         </div>
       </section>
@@ -1237,13 +1162,13 @@ function HomePage({ setPage }) {
           <div className="label" style={{ justifyContent: "center" }}>Nossa Ambição</div>
           <h2 className="title">Democratizar a saúde postural<br /><span className="glow">para todos os brasileiros</span></h2>
           <p style={{ color: "var(--text-dim)", fontSize: 16, marginBottom: 48 }}>
-            A PosturIA acredita que tecnologia de ponta deve ser acessível. Nossa missão é integrar IA à fisioterapia, prevenir doenças musculoesqueléticas e conectar pacientes a profissionais de saúde de forma inteligente e eficiente.
+            A PosturIA é um projeto em desenvolvimento de tecnologia vestível e ferramentas digitais. O protótipo ainda não está disponível para uso clínico ou compra.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
             {[
               { icon: "🌍", title: "Acessibilidade" },
               { icon: "🤝", title: "Integração Clínica" },
-              { icon: "🧬", title: "IA à Serviço da Saúde" },
+              { icon: "🔬", title: "Pesquisa e validação" },
               { icon: "🚀", title: "Inovação Contínua" },
             ].map(m => (
               <div key={m.title} className="glass" style={{ padding: 24, textAlign: "center" }}>
@@ -1281,7 +1206,7 @@ function HomePage({ setPage }) {
             <div>
               <Logo size={26} />
               <p style={{ color: "var(--text-dim)", fontSize: 14, marginTop: 16, maxWidth: 280, lineHeight: 1.7 }}>
-                Colete inteligente para reabilitação postural com IA. Saúde 4.0 ao alcance de todos.
+                Projeto em desenvolvimento. Colete, integração de sensores e recursos de IA não estão disponíveis nesta versão.
               </p>
               <div style={{ marginTop: 20, fontSize: 13, color: "var(--text-dim)" }}>
                 📧 posturiacontacts@gmail.com<br />
@@ -1292,8 +1217,22 @@ function HomePage({ setPage }) {
             <div>
               <div className="footer-title">Navegação</div>
               <ul className="footer-links">
-                {["Início", "Solução", "Tecnologia", "Planos", "Contato"].map(l => (
-                  <li key={l}><a href="#">{l}</a></li>
+                {[
+                  { label: "Início", target: "home", page: "home" },
+                  { label: "Solução", target: "solution", page: "home" },
+                  { label: "Tecnologia", target: "tech", page: "home" },
+                  { label: "Planos", target: null, page: "shop" },
+                  { label: "Contato", target: null, page: "contact" },
+                ].map(item => (
+                  <li key={item.label}><a href={item.target ? `#${item.target}` : `/${item.page}`} onClick={event => {
+                    event.preventDefault();
+                    if (item.target) {
+                      setPage("home");
+                      setTimeout(() => document.getElementById(item.target)?.scrollIntoView({ behavior: "smooth" }), 0);
+                    } else {
+                      setPage(item.page);
+                    }
+                  }}>{item.label}</a></li>
                 ))}
               </ul>
             </div>
@@ -1301,21 +1240,21 @@ function HomePage({ setPage }) {
               <div className="footer-title">Fundadores</div>
               <ul className="footer-links">
                 {["Samuel Prates", "Eduardo Henrique", "Arthur Camargo", "Samuel Soares", "Naldo Braz"].map(f => (
-                  <li key={f}><a href="#" style={{ cursor: "default" }}>{f}</a></li>
+                  <li key={f}><span>{f}</span></li>
                 ))}
               </ul>
             </div>
             <div>
               <div className="footer-title">Legal</div>
               <ul className="footer-links">
-                {["Política de Privacidade", "Termos de Uso", "LGPD", "Certificações"].map(l => (
-                  <li key={l}><a href="#">{l}</a></li>
+                {["Política de Privacidade", "Termos de Uso", "Informações regulatórias"].map(l => (
+                  <li key={l}><span title="Conteúdo pendente de validação e publicação">{l} — em preparação</span></li>
                 ))}
               </ul>
             </div>
           </div>
           <div className="footer-copy">
-            <p>© 2025 PosturIA — Todos os direitos reservados</p>
+            <p>© {new Date().getFullYear()} PosturIA — Todos os direitos reservados</p>
             <p>Desenvolvido para SENAI / WorldSkills Brasil</p>
           </div>
         </div>
@@ -1326,73 +1265,35 @@ function HomePage({ setPage }) {
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────
 function LoginPage() {
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [err, setErr] = useState("");
-  const [step, setStep] = useState("login"); // login | role
+  const { data, setData, post, processing, errors } = useForm({ email: "", password: "" });
 
-  const handleLogin = () => {
-    if (user === "Eduardo0" && pass === "Posturia0.") {
-      setStep("role");
-    } else {
-      setErr("Credenciais inválidas.");
-    }
+  const submit = (event) => {
+    event.preventDefault();
+    post("/login", { onSuccess: () => router.visit("/admin") });
   };
-
-  const goToAdmin = (role) => {
-    router.visit("/admin", { data: { role } });
-  };
-
-  if (step === "role") {
-    return (
-      <div className="login-wrap grid-bg">
-        <div style={{ textAlign: "center" }}>
-          <Logo size={28} />
-          <h2 style={{ fontFamily: "var(--font-display)", marginTop: 32, marginBottom: 8, color: "var(--text)" }}>
-            Bem-vindo, Eduardo
-          </h2>
-          <p style={{ color: "var(--text-dim)", marginBottom: 40 }}>Como deseja acessar o sistema?</p>
-          <div className="role-grid" style={{ maxWidth: 400, margin: "0 auto" }}>
-            <div className="role-card" onClick={() => goToAdmin("medico")}>
-              <div className="role-icon">👨‍⚕️</div>
-              <div className="role-name">Médico</div>
-            </div>
-            <div className="role-card" onClick={() => goToAdmin("clinica")}>
-              <div className="role-icon">🏥</div>
-              <div className="role-name">Clínica</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="login-wrap grid-bg">
-      <div className="glass login-card">
+      <form className="glass login-card" onSubmit={submit}>
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <Logo size={26} />
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text-dim)", marginTop: 12, letterSpacing: 2, fontWeight: 400 }}>
             ÁREA PROFISSIONAL
           </h2>
         </div>
-        {err && (
-          <div style={{ background: "rgba(255,68,85,0.08)", border: "1px solid rgba(255,68,85,0.3)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#ff6677" }}>
-            {err}
-          </div>
-        )}
+        {errors.email && <div role="alert" style={{ color: "#ff6677", marginBottom: 16 }}>{errors.email}</div>}
         <div className="form-group">
-          <label className="form-label">Login</label>
-          <input className="form-input" value={user} onChange={e => { setUser(e.target.value); setErr(""); }} placeholder="Digite seu login" />
+          <label className="form-label" htmlFor="login-email">E-mail</label>
+          <input id="login-email" className="form-input" type="email" autoComplete="username" required value={data.email} onChange={e => setData("email", e.target.value)} />
         </div>
         <div className="form-group">
-          <label className="form-label">Senha</label>
-          <input className="form-input" type="password" value={pass} onChange={e => { setPass(e.target.value); setErr(""); }} placeholder="••••••••••" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+          <label className="form-label" htmlFor="login-password">Senha</label>
+          <input id="login-password" className="form-input" type="password" autoComplete="current-password" required value={data.password} onChange={e => setData("password", e.target.value)} />
         </div>
-        <button className="btn-cyan" style={{ width: "100%", marginTop: 8, justifyContent: "center" }} onClick={handleLogin}>
-          <span>Acessar Sistema</span>
+        <button className="btn-cyan" type="submit" style={{ width: "100%", marginTop: 8, justifyContent: "center" }} disabled={processing}>
+          <span>{processing ? "Acessando..." : "Acessar Sistema"}</span>
         </button>
-      </div>
+      </form>
     </div>
   );
 }
@@ -1401,71 +1302,46 @@ function LoginPage() {
 function ContactPage() {
   const [faqOpen, setFaqOpen] = useState(null);
   const faqs = [
-    { q: "Qual o prazo de entrega do colete?", a: "O colete PosturIA é enviado em até 5 dias úteis após a confirmação do pagamento, com rastreamento em tempo real." },
-    { q: "Posso usar o colete sem o aplicativo?", a: "O colete funciona de forma autônoma com feedback háptico, mas o dashboard requer conexão Wi-Fi para sincronização." },
-    { q: "Há garantia no produto?", a: "Sim. O PosturIA acompanha garantia de 12 meses contra defeitos de fabricação e suporte técnico incluso." },
-    { q: "O plano Premium inclui acompanhamento médico?", a: "O plano Premium IA+ inclui acesso ao painel clínico para um profissional de saúde de sua escolha." },
+    { q: "Qual o prazo de entrega e o frete?", a: "As condições de entrega e frete serão informadas antes da abertura das vendas. Nenhum pedido online está sendo registrado neste momento." },
+    { q: "Quais são as condições de garantia?", a: "As condições de garantia e suporte ainda precisam ser confirmadas e publicadas antes da venda." },
+    { q: "O PosturIA substitui atendimento médico?", a: "Não. A plataforma é uma ferramenta de apoio e não substitui consulta, diagnóstico ou tratamento por profissional de saúde." },
+  ];
+  const contacts = [
+    { icon: "📧", label: "E-mail", val: "posturiacontacts@gmail.com", href: "mailto:posturiacontacts@gmail.com" },
+    { icon: "📞", label: "Telefone", val: "(31) 98671-1880", href: "tel:+5531986711880" },
+    { icon: "📱", label: "Instagram", val: "@postur.ia", href: "https://instagram.com/postur.ia" },
   ];
 
   return (
     <>
       <div style={{ height: 80 }} />
-      <section className="section">
+      <section className="section" id="contact">
         <div className="container">
           <div className="label">Contato e Suporte</div>
           <h2 className="title">Fale com a <span className="glow">PosturIA</span></h2>
           <div className="contact-grid">
-            <div>
-              <div className="contact-info">
-                {[
-                  { icon: "📧", label: "E-mail", val: "posturiacontacts@gmail.com" },
-                  { icon: "📞", label: "Telefone", val: "(31) 98671-1880" },
-                  { icon: "📱", label: "Instagram", val: "@postur.ia" },
-                  { icon: "⏰", label: "Atendimento", val: "Seg–Sex: 8h–18h" },
-                ].map(c => (
-                  <div key={c.label} className="contact-item">
-                    <div className="contact-icon">{c.icon}</div>
-                    <div>
-                      <div className="contact-label">{c.label}</div>
-                      <div className="contact-val">{c.val}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="contact-info">
+              {contacts.map(c => (
+                <a key={c.label} className="contact-item" href={c.href} target={c.label === "Instagram" ? "_blank" : undefined} rel={c.label === "Instagram" ? "noreferrer" : undefined}>
+                  <div className="contact-icon">{c.icon}</div>
+                  <div><div className="contact-label">{c.label}</div><div className="contact-val">{c.val}</div></div>
+                </a>
+              ))}
             </div>
-            <div>
-              <div className="glass" style={{ padding: 32 }}>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 13, color: "var(--text)", marginBottom: 24, letterSpacing: 1 }}>
-                  ENVIAR MENSAGEM
-                </div>
-                {["Nome completo", "E-mail", "Telefone"].map(f => (
-                  <div key={f} className="form-group">
-                    <label className="form-label">{f}</label>
-                    <input className="form-input" placeholder={f} />
-                  </div>
-                ))}
-                <div className="form-group">
-                  <label className="form-label">Mensagem</label>
-                  <textarea className="form-input" rows={4} placeholder="Descreva sua dúvida ou necessidade..." style={{ resize: "vertical" }} />
-                </div>
-                <button className="btn-cyan" style={{ width: "100%", justifyContent: "center" }}>
-                  <span>Enviar Mensagem</span>
-                </button>
-              </div>
+            <div className="glass" style={{ padding: 32 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 13, color: "var(--text)", marginBottom: 16, letterSpacing: 1 }}>FALE COM A EQUIPE</div>
+              <p style={{ color: "var(--text-dim)", marginBottom: 24 }}>Este site ainda não envia nem armazena mensagens. Para contato, abra seu aplicativo de e-mail pelo botão abaixo.</p>
+              <a className="btn-cyan" style={{ width: "100%", justifyContent: "center" }} href="mailto:posturiacontacts@gmail.com?subject=Contato%20PosturIA"><span>Enviar e-mail</span></a>
             </div>
           </div>
 
-          {/* FAQ */}
           <div style={{ marginTop: 80 }}>
             <div className="label">FAQ</div>
             <h3 className="title" style={{ fontSize: 28 }}>Perguntas <span className="glow">frequentes</span></h3>
             <div style={{ maxWidth: 700, marginTop: 32 }}>
               {faqs.map((f, i) => (
                 <div key={i} className="faq-item">
-                  <button className="faq-q" onClick={() => setFaqOpen(faqOpen === i ? null : i)}>
-                    {f.q}
-                    <span style={{ color: "var(--cyan)", fontSize: 18, transition: "transform 0.3s", display: "inline-block", transform: faqOpen === i ? "rotate(45deg)" : "none" }}>+</span>
-                  </button>
+                  <button className="faq-q" onClick={() => setFaqOpen(faqOpen === i ? null : i)}>{f.q}<span style={{ color: "var(--cyan)", fontSize: 18 }}>{faqOpen === i ? "−" : "+"}</span></button>
                   {faqOpen === i && <div className="faq-a">{f.a}</div>}
                 </div>
               ))}
@@ -1479,130 +1355,59 @@ function ContactPage() {
 
 // ─── SHOP PAGE ────────────────────────────────────────────────────
 function ShopPage() {
-  const [modal, setModal] = useState(null); // null | "essential" | "premium"
-  const [success, setSuccess] = useState(false);
-  const [form, setForm] = useState({ nome: "", email: "", telefone: "", cpf: "", endereco: "", cidade: "", estado: "" });
-
-  const handleBuy = () => {
-    setSuccess(true);
+  const [modal, setModal] = useState(null);
+  const plans = {
+    essential: { name: "Plano Essencial", price: "R$ 600,00" },
+    premium: { name: "Plano Avançado (planejado)", price: "R$ 800,00" },
   };
 
   return (
     <>
       <div style={{ height: 80 }} />
-      <section className="section">
+      <section className="section" id="shop">
         <div className="container">
-          <div className="label">Planos e Preços</div>
-          <h2 className="title">Escolha seu <span className="glow">PosturIA</span></h2>
-          <p style={{ color: "var(--text-dim)", maxWidth: 520 }}>
-            Invista na sua saúde postural. Tecnologia de ponta com acompanhamento profissional.
-          </p>
+          <div className="label">Pacotes em planejamento</div>
+          <h2 className="title">Referências do <span className="glow">PosturIA</span></h2>
+          <p style={{ color: "var(--text-dim)", maxWidth: 620 }}>Valores de referência de planejamento. Não há compra, pedido, frete ou pagamento disponível nesta página.</p>
+          <p className="plan-status" style={{ color: "var(--text-dim)", maxWidth: 720, marginBottom: 24 }}>Protótipo em desenvolvimento — não disponível para compra. Os valores e pacotes abaixo são referências de planejamento, não uma oferta comercial.</p>
           <div className="plans-grid">
-            {/* Essencial */}
             <div className="plan-card">
-              <div className="plan-name">Plano Essencial</div>
-              <div className="plan-price">R$499</div>
-              <div className="plan-period">pagamento único + frete grátis</div>
+              <div className="plan-name">{plans.essential.name}</div>
+              <div className="plan-price">{plans.essential.price}</div>
+              <div className="plan-period">preço de referência — não disponível</div>
               <ul className="plan-features">
-                <li>Colete PosturIA completo</li>
-                <li>Monitoramento básico em tempo real</li>
-                <li>Dashboard simplificado</li>
-                <li>Feedback háptico ativo</li>
-                <li>Acompanhamento médico básico</li>
-                <li>Garantia de 12 meses</li>
+                <li>Colete: protótipo; disponibilidade não confirmada</li>
+                <li>Painel web: demonstração sem telemetria do colete</li>
+                <li>Feedback háptico: em validação</li>
+                <li>Área profissional para acompanhamento</li>
               </ul>
-              <button className="btn-outline" style={{ width: "100%", justifyContent: "center" }} onClick={() => { setModal("essential"); setSuccess(false); }}>
-                Adquirir Agora
-              </button>
+              <button className="btn-outline" style={{ width: "100%", justifyContent: "center" }} onClick={() => setModal("essential")}>Consultar sobre o projeto</button>
             </div>
-
-            {/* Premium */}
             <div className="plan-card featured">
-              <div className="plan-badge">Mais Popular</div>
-              <div className="plan-name">Plano Premium IA+</div>
-              <div className="plan-price">R$699</div>
-              <div className="plan-period">pagamento único + frete grátis</div>
+              <div className="plan-name">{plans.premium.name}</div>
+              <div className="plan-price">{plans.premium.price}</div>
+              <div className="plan-period">preço de referência — não disponível</div>
               <ul className="plan-features">
-                <li>Tudo do plano Essencial</li>
-                <li>Envio de dados em tempo real</li>
-                <li>Relatórios automáticos com IA</li>
-                <li>Assistente de IA integrado</li>
-                <li>Gráficos e relatórios visuais</li>
-                <li>Notificações via WhatsApp</li>
-                <li>Análise de comportamento corporal</li>
-                <li>Apoio clínico avançado</li>
-                <li>Painel do profissional de saúde</li>
+                <li>Recursos avançados ainda em definição</li>
+                <li>IA, WhatsApp e análises automatizadas não estão disponíveis</li>
+                <li>Não fazem parte de uma oferta comercial atual</li>
               </ul>
-              <button className="btn-cyan" style={{ width: "100%", justifyContent: "center" }} onClick={() => { setModal("premium"); setSuccess(false); }}>
-                <span>Adquirir Agora</span>
-              </button>
+              <button className="btn-cyan" style={{ width: "100%", justifyContent: "center" }} onClick={() => setModal("premium")}><span>Consultar sobre o projeto</span></button>
             </div>
           </div>
-
-          {/* Differentials */}
-          <div style={{ marginTop: 80 }}>
-            <div className="label">Diferenciais</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginTop: 32 }}>
-              {[
-                { icon: "⚡", title: "Feedback Imediato", text: "Correção em milissegundos através dos motores vibratórios integrados." },
-                { icon: "📡", title: "Monitoramento Contínuo", text: "Dados capturados 24/7 com sincronização automática." },
-                { icon: "🏥", title: "Integração Clínica", text: "Dashboard dedicado para médicos e fisioterapeutas." },
-                { icon: "🛡️", title: "Tecnologia Acessível", text: "Preço justo com qualidade profissional de ponta." },
-              ].map(d => (
-                <div key={d.title} className="glass problem-card">
-                  <span className="problem-icon">{d.icon}</span>
-                  <div className="problem-title">{d.title}</div>
-                  <p className="problem-text">{d.text}</p>
-                </div>
-              ))}
-            </div>
+          <div style={{ marginTop: 40, color: "var(--text-dim)", fontSize: 13 }}>
+            Frete, prazo, garantia, condições de pagamento e termos de venda ainda não foram definidos; não aceite pagamento por esta página.
           </div>
         </div>
       </section>
 
-      {/* Modal */}
       {modal && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setModal(null)}>✕</button>
-            {!success ? (
-              <>
-                <div className="modal-title">
-                  {modal === "essential" ? "Plano Essencial — R$499" : "Plano Premium IA+ — R$699"}
-                </div>
-                <div className="modal-sub">Preencha seus dados para prosseguir com a compra</div>
-                {[
-                  { key: "nome", label: "Nome Completo" },
-                  { key: "email", label: "E-mail" },
-                  { key: "telefone", label: "Telefone" },
-                  { key: "cpf", label: "CPF" },
-                  { key: "endereco", label: "Endereço" },
-                  { key: "cidade", label: "Cidade" },
-                  { key: "estado", label: "Estado" },
-                ].map(f => (
-                  <div key={f.key} className="form-group" style={{ marginBottom: 16 }}>
-                    <label className="form-label">{f.label}</label>
-                    <input className="form-input" placeholder={f.label}
-                      value={form[f.key]}
-                      onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))} />
-                  </div>
-                ))}
-                <button className="btn-cyan" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={handleBuy}>
-                  <span>Finalizar Pedido</span>
-                </button>
-              </>
-            ) : (
-              <div className="success-box">
-                <div className="success-icon">🔐</div>
-                <div className="success-title">Pedido Registrado!</div>
-                <p className="success-msg">
-                  Você seria encaminhado para a área de pagamento segura da PosturIA para concluir sua compra com criptografia SSL e total segurança.
-                </p>
-                <button className="btn-cyan" style={{ marginTop: 28, justifyContent: "center" }} onClick={() => setModal(null)}>
-                  <span>Fechar</span>
-                </button>
-              </div>
-            )}
+          <div className="modal-box" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setModal(null)} aria-label="Fechar">✕</button>
+            <div className="modal-title">{plans[modal].name} — {plans[modal].price}</div>
+            <p className="modal-sub">O checkout ainda não está configurado. Nenhum pedido, pagamento ou dado pessoal foi registrado.</p>
+            <a className="btn-cyan" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} href="mailto:posturiacontacts@gmail.com?subject=Disponibilidade%20PosturIA"><span>Consultar por e-mail</span></a>
           </div>
         </div>
       )}

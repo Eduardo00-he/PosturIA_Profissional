@@ -4,10 +4,17 @@ import './bootstrap'
 import './index.css'
 import './App.css'
 
+const pages = import.meta.glob('./Pages/**/*.jsx')
+
 createInertiaApp({
-  resolve: name => {
-    const pages = import.meta.glob('./Pages/**/*.jsx', { eager: true })
-    return pages[`./Pages/${name}.jsx`]
+  resolve: async name => {
+    const importPage = pages[`./Pages/${name}.jsx`]
+    if (!importPage) {
+      throw new Error(`Página Inertia não encontrada: ${name}`)
+    }
+
+    const page = await importPage()
+    return page.default
   },
   setup({ el, App, props }) {
     createRoot(el).render(<App {...props} />)
